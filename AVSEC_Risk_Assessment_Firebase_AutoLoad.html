@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVSEC Quality Assurance Risk Assessment v7.3 Year Wise</title>
+<!-- Full rebuild v7.3: year-wise data selection included -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-analytics-compat.js"></script>
+<style>
+:root{
+  --blue:#0b3d91;--cyan:#0097a7;--dark:#08233f;--light:#f4f8fb;--danger:#dc3545;--green:#198754;--orange:#fd7e14;
+}
+*{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--light);color:#1b1b1b}
+header{background:linear-gradient(135deg,var(--dark),var(--blue));color:white;padding:16px 22px;position:sticky;top:0;z-index:10;box-shadow:0 2px 8px #0004}
+header h1{margin:0;font-size:22px} nav{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap}
+nav button,.btn{border:0;border-radius:8px;padding:10px 14px;font-weight:bold;cursor:pointer;background:white;color:var(--blue)}
+nav button.active{background:#ffd166;color:#111}.btn.primary{background:var(--blue);color:white}.btn.green{background:var(--green);color:white}.btn.red{background:var(--danger);color:white}.btn.orange{background:var(--orange);color:white}.btn.gray{background:#6c757d;color:white}
+.page{display:none;padding:20px}.page.active{display:block}.card{background:white;border-radius:14px;padding:18px;margin-bottom:18px;box-shadow:0 2px 10px #0001}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.note{border-left:6px solid var(--cyan);padding:12px;background:#e9fbff;border-radius:8px}.matrix{width:100%;border-collapse:collapse}.matrix th,.matrix td{border:1px solid #ccd;padding:8px;text-align:center}.matrix th{background:#123;color:white}
+.risk-chart-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}.chart-table{width:100%;border-collapse:collapse;font-size:13px}.chart-table th,.chart-table td{border:1px solid #777;padding:8px;vertical-align:top}.chart-table th{background:#123;color:white}.chart-title{font-weight:bold;color:var(--blue);font-size:18px;margin:0 0 10px}.vertical-label{writing-mode:vertical-rl;transform:rotate(180deg);font-weight:bold;text-align:center;background:#eaf2ff}.level-high{background:#e53935!important;color:white}.level-medium-high{background:#c47a38!important;color:#111}.level-medium{background:#ffd700!important;color:#111}.level-medium-low{background:#7ac143!important;color:#111}.level-low{background:#37a65a!important;color:white}.formula-box{background:#f7fbff;border:1px solid #d7e6f7;border-radius:10px;padding:12px;margin-top:10px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}.table-wrap{overflow:auto;background:white;border-radius:12px;box-shadow:0 2px 10px #0001;max-height:72vh}
+table.data{border-collapse:separate;border-spacing:0;min-width:4200px;width:max-content} table.data th{position:sticky;top:0;background:#123;color:white;z-index:2;font-size:12px;resize:horizontal;overflow:auto;min-width:120px}
+table.data th,table.data td{border:1px solid #cfd7df;padding:6px;vertical-align:top} table.data td{background:white;min-width:120px} table.data tr:nth-child(even) td{background:#fbfdff}
+input,select,textarea{width:100%;border:1px solid #bac7d5;border-radius:6px;padding:7px;font-size:13px;background:white}textarea{min-height:42px;resize:vertical;overflow:hidden;white-space:pre-wrap;word-break:break-word}.small{font-size:12px;color:#555}.risk-low{background:#d1e7dd!important}.risk-medium-low{background:#fff3cd!important}.risk-medium{background:#ffe5b4!important}.risk-medium-high{background:#f8d7da!important}.risk-high{background:#f5b5bd!important;color:#5b0008}.highlight td{animation:flash 2s ease-in-out 1;background:#fff176!important}@keyframes flash{0%,100%{background:#fff176}50%{background:#ff9800}}
+.badge{padding:4px 8px;border-radius:12px;font-weight:bold;display:inline-block}.hidden{display:none} footer{text-align:center;color:#666;padding:15px}
+.dashboard{margin-top:18px}.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.dash-card{background:white;border-radius:12px;padding:14px;box-shadow:0 2px 10px #0001;border-left:6px solid var(--blue)}.dash-card h4{margin:0 0 8px 0;font-size:14px;color:var(--dark)}.dash-count{font-size:30px;font-weight:bold;color:var(--blue)}.bar{height:10px;background:#e5eaf0;border-radius:20px;overflow:hidden;margin-top:8px}.bar span{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),var(--blue))}
+
+.login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#061a30,#0b3d91 60%,#0097a7);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}.login-card{width:min(460px,100%);background:white;border-radius:22px;padding:28px;box-shadow:0 20px 60px #0008;text-align:center}.login-card h1{margin:0 0 8px;color:var(--blue);font-size:26px}.login-card p{color:#586675}.login-card input{margin:8px 0;padding:12px;font-size:15px}.login-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.mode-pill{margin-top:8px;display:inline-block;background:#e8f1ff;color:var(--blue);padding:6px 12px;border-radius:20px;font-weight:bold}.app-locked header,.app-locked main,.app-locked section:not(#loginScreen),.app-locked footer{filter:blur(4px);pointer-events:none}.viewer-mode input,.viewer-mode select,.viewer-mode textarea{background:#f3f6f8!important;color:#333;pointer-events:none}.viewer-mode .admin-only{display:none!important}.viewer-mode button.admin-action,.viewer-mode label.admin-action{display:none!important}.marquee-footer{position:fixed;bottom:0;left:0;right:0;background:#08233f;color:white;height:34px;overflow:hidden;z-index:20;display:flex;align-items:center}.marquee-footer span{white-space:nowrap;display:inline-block;padding-left:100%;animation:marquee 22s linear infinite;font-weight:bold;letter-spacing:.4px}@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}body{padding-bottom:34px}.login-error{color:#dc3545;font-weight:bold;min-height:20px;margin-top:8px}.logout-btn{margin-left:auto;background:#ffd166;color:#111}.readonly-note{background:#fff3cd;border-left:5px solid #f0ad4e;padding:10px;border-radius:8px;margin-bottom:10px;font-weight:bold}
+
+/* v7.2 viewer full-text fix */
+.view-cell{white-space:pre-wrap;word-break:break-word;overflow:visible;line-height:1.45;min-height:34px;max-width:520px;}
+.viewer-mode table.data{min-width:3600px;width:max-content;}
+.viewer-mode table.data td{white-space:normal;overflow:visible;height:auto;vertical-align:top;}
+.viewer-mode table.data tr{height:auto;}
+.viewer-mode textarea{height:auto!important;min-height:80px!important;white-space:pre-wrap!important;word-break:break-word!important;overflow:visible!important;}
+.viewer-mode .table-wrap{max-height:none;overflow:auto;}
+.long-view{min-width:280px;max-width:560px;}
+
+.year-screen{position:fixed;inset:0;background:linear-gradient(135deg,#061a30,#0b3d91 60%,#0097a7);display:none;align-items:center;justify-content:center;z-index:9998;padding:20px}.year-card{width:min(430px,100%);background:white;border-radius:22px;padding:28px;box-shadow:0 20px 60px #0008;text-align:center}.year-card h2{margin:0 0 10px;color:var(--blue)}.year-card select{padding:12px;font-size:18px;text-align:center;margin:10px 0}.year-line{display:inline-block;margin-left:8px;background:#fff3cd;color:#111;padding:6px 12px;border-radius:18px;font-weight:bold}
+
+</style>
+</head>
+<body class="app-locked">
+
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <h1>AVSEC Risk Assessment System</h1>
+    <p>Select access mode to continue.</p>
+    <div id="adminLoginBox">
+      <input id="loginUser" placeholder="Admin Username" autocomplete="username">
+      <input id="loginPass" type="password" placeholder="Admin Password" autocomplete="current-password">
+      <button class="btn primary" style="width:100%;margin-top:8px" onclick="adminLogin()">Login as Admin</button>
+    </div>
+    <div class="login-actions">
+      <button class="btn gray" onclick="viewerLogin()">Login as Viewer</button>
+      <button class="btn orange" onclick="document.getElementById('loginPass').focus()">Admin Login</button>
+    </div>
+    <div id="loginError" class="login-error"></div>
+    <span class="mode-pill">Viewer = view only | Admin = edit access</span>
+  </div>
+</div>
+
+<div id="yearScreen" class="year-screen">
+  <div class="year-card">
+    <h2>Select Assessment Year</h2>
+    <p>Data will be saved and automatically loaded year-wise from Firebase.</p>
+    <select id="yearSelect"></select>
+    <button class="btn primary" style="width:100%;margin-top:10px" onclick="enterYear()">Continue</button>
+    <button class="btn gray" style="width:100%;margin-top:8px" onclick="backToLogin()">Back to Login</button>
+    <div class="small" style="margin-top:12px">Available years: 2025 to 2100</div>
+  </div>
+</div>
+
+<header>
+  <h1>AVSEC Quality Assurance Risk Assessment System</h1>
+  <nav>
+    <button onclick="showPage('home')" id="tab-home" class="active">Home</button>
+    <button onclick="showPage('qa')" id="tab-qa">Quality Assurance Risk Assessment</button>
+    <button onclick="showPage('register')" id="tab-register">Risk Register</button>
+    <button class="logout-btn" onclick="logoutApp()">Logout</button>
+    <span id="modeLabel" class="mode-pill">Not logged in</span><span id="yearLabel" class="year-line hidden">Year: -</span>
+  </nav>
+</header>
+
+<section id="home" class="page active">
+  <div class="card">
+    <h2>AVSEC Risk Assessment</h2>
+    <p>This web application is designed to record aviation security quality assurance risks, calculate risk scores, document immediate and corrective actions, determine residual risk after CAP, and transfer selected records to the final Risk Register.</p>
+    <div class="note"><b>ICAO based approach:</b> An aviation security risk assessment should be evidence-based and aligned with ICAO security management principles, considering likelihood, vulnerability, consequences, existing controls, corrective action, monitoring, and periodic review. Use this tool as an operational QA risk tracking register.</div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Methodology</h3>
+      <p><b>Risk Score = Likelihood + Consequences + Vulnerability</b></p>
+      <p>The score is calculated on a 3.0–30 scale and the system automatically assigns the risk tolerability level.</p>
+    </div>
+    <div class="card">
+      <h3>Risk Tolerability</h3>
+      <p><span class="badge risk-low">Low</span> 3.0 to 7.5</p>
+      <p><span class="badge risk-medium-low">Medium Low</span> 7.6 to 13.5</p>
+      <p><span class="badge risk-medium">Medium</span> 13.6 to 19.5</p>
+      <p><span class="badge risk-medium-high">Medium High</span> 19.6 to 25.5</p>
+      <p><span class="badge risk-high">High</span> 25.6 to 30</p>
+    </div>
+    <div class="card">
+      <h3>QA Sources</h3>
+      <p>Findings identified through audits, inspections, tests, observations, and exercises can be recorded here for corrective action tracking and review.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Security Risk Assessment Rating Charts</h2>
+    <div class="risk-chart-wrap">
+      <div>
+        <p class="chart-title">For Likelihood</p>
+        <table class="chart-table">
+          <tr><th>Rating</th><th>Description</th></tr>
+          <tr><td class="level-high"><b>HIGH</b><br>rated as 9 or 10</td><td>Means a very plausible scenario, with an actual attack of this kind having occurred in the past few years, or strong evidence of capability, intent, and planning.</td></tr>
+          <tr><td class="level-medium-high"><b>MEDIUM HIGH</b><br>rated as 7 or 8</td><td>Means a clearly plausible scenario, with relatively recent examples or evidence of early attack planning or hostile reconnaissance.</td></tr>
+          <tr><td class="level-medium"><b>MEDIUM</b><br>rated as 5 or 6</td><td>Means a reasonably plausible scenario, with some evidence of intent and capability and possibly examples, but no evidence of current attack planning.</td></tr>
+          <tr><td class="level-medium-low"><b>MEDIUM LOW</b><br>rated as 3 or 4</td><td>Means a scenario for which there are no present examples, but signs of capability, intent, or successful attack in related contexts exist.</td></tr>
+          <tr><td class="level-low"><b>LOW</b><br>rated as 1 or 2</td><td>Means a theoretically plausible scenario but with no examples or signs of capability, intent, attack planning, or a successful attack.</td></tr>
+        </table>
+      </div>
+      <div>
+        <p class="chart-title">For Vulnerability</p>
+        <table class="chart-table">
+          <tr><th>Rating</th><th>Description</th></tr>
+          <tr><td class="level-high"><b>HIGH</b><br>rated as 9 or 10</td><td>Means no mitigating measures are in general effect, either because there is no Annex 17 requirement or because realistic effective measures are unavailable.</td></tr>
+          <tr><td class="level-medium-high"><b>MEDIUM HIGH</b><br>rated as 7 or 8</td><td>Means mitigation measures exist, but generally only partial or limited measures are in place.</td></tr>
+          <tr><td class="level-medium"><b>MEDIUM</b><br>rated as 5 or 6</td><td>Means features of both medium high and medium low are present.</td></tr>
+          <tr><td class="level-medium-low"><b>MEDIUM LOW</b><br>rated as 3 or 4</td><td>Means that clear Annex 17 measures exist and mitigating measures are generally in widespread use.</td></tr>
+          <tr><td class="level-low"><b>LOW</b><br>rated as 1 or 2</td><td>Means generally effective measures exist and mitigating measures are in widespread use.</td></tr>
+        </table>
+      </div>
+      <div>
+        <p class="chart-title">Consequences</p>
+        <table class="chart-table">
+          <tr><th>Impact Rating</th><th>Human</th><th>Direct Economic Impact</th><th>Other</th></tr>
+          <tr><td class="level-high"><b>HIGH</b><br>rated as 9 or 10</td><td>Hundreds of deaths</td><td>Billions of United States dollars</td><td>Severe disruption to access and confidence in the aviation system</td></tr>
+          <tr><td class="level-medium-high"><b>MEDIUM HIGH</b><br>rated as 7 or 8</td><td>Some but not all high consequences above</td><td></td><td></td></tr>
+          <tr><td class="level-medium"><b>MEDIUM</b><br>rated as 5 or 6</td><td>Tens of deaths</td><td>Tens or hundreds of millions of United States dollars</td><td>Substantial disruption to access and confidence in the aviation system</td></tr>
+          <tr><td class="level-medium-low"><b>MEDIUM LOW</b><br>rated as 3 or 4</td><td>Some but not all medium consequences above</td><td></td><td></td></tr>
+          <tr><td class="level-low"><b>LOW</b><br>rated as 1 or 2</td><td>Possibly some deaths and injuries</td><td>Some economic impact</td><td>Some disruption to services and confidence in the aviation system</td></tr>
+        </table>
+      </div>
+      <div>
+        <p class="chart-title">Risk Score and Tolerability</p>
+        <table class="chart-table">
+          <tr><th>Likelihood (L)</th><th>+</th><th>Consequences (C)</th><th>+</th><th>Vulnerability (V)</th><th>Risk Score</th><th>Risk Rating</th></tr>
+          <tr><td>9–10</td><td>+</td><td>9–10</td><td>+</td><td>9–10</td><td class="level-high">25.6 to 30</td><td class="level-high">HIGH</td></tr>
+          <tr><td>7–8</td><td>+</td><td>7–8</td><td>+</td><td>7–8</td><td class="level-medium-high">19.6 to 25.5</td><td class="level-medium-high">MEDIUM HIGH</td></tr>
+          <tr><td>5–6</td><td>+</td><td>5–6</td><td>+</td><td>5–6</td><td class="level-medium">13.6 to 19.5</td><td class="level-medium">MEDIUM</td></tr>
+          <tr><td>3–4</td><td>+</td><td>3–4</td><td>+</td><td>3–4</td><td class="level-medium-low">7.6 to 13.5</td><td class="level-medium-low">MEDIUM LOW</td></tr>
+          <tr><td>1–2</td><td>+</td><td>1–2</td><td>+</td><td>1–2</td><td class="level-low">3.0 to 7.5</td><td class="level-low">LOW</td></tr>
+        </table>
+        <div class="formula-box"><b>Formula:</b> Risk Score = Likelihood Score + Consequences Score + Vulnerability Score.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="qa" class="page">
+  <div class="toolbar">
+    <button class="btn primary" onclick="addQARow()">+ Add Row</button><button class="btn green" onclick="saveCloud()">Save to Firebase</button><button class="btn gray" onclick="loadCloud()">Load from Firebase</button><button class="btn orange" onclick="downloadTemplate()">Download Import Template</button><label class="btn gray">Import Excel<input type="file" id="importFile" accept=".xlsx,.xls" class="hidden" onchange="importExcel(event)"></label><button class="btn green" onclick="exportExcel('qa')">Export Excel</button><button class="btn red" onclick="clearQA()">Clear QA Table</button>
+    <span class="small">Column borders can be dragged to adjust width. Text areas auto-expand while typing.</span>
+  </div>
+  <div class="table-wrap"><table class="data" id="qaTable"><thead><tr id="qaHead"></tr></thead><tbody></tbody></table></div>
+  <div class="dashboard card">
+    <h2>Dashboard - Risk Count by Scope / Area</h2>
+    <div id="scopeDashboard" class="dash-grid"></div>
+  </div>
+</section>
+
+<section id="register" class="page">
+  <div id="viewerNoteReg" class="readonly-note hidden">Viewer mode: Risk Register is read-only. Login as Admin to edit, delete or save.</div><div class="toolbar"><button class="btn green admin-action" onclick="saveCloud()">Save to Firebase</button><button class="btn gray" onclick="loadCloud()">Load from Firebase</button><button class="btn green" onclick="exportExcel('register')">Export Excel</button><button class="btn red admin-action" onclick="clearRegister()">Clear Risk Register</button></div>
+  <div class="table-wrap"><table class="data" id="regTable"><thead><tr id="regHead"></tr></thead><tbody></tbody></table></div>
+</section>
+<footer class="marquee-footer"><span>Developed By Aviation Security Quality Assurance Unit &nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp; Developed By Aviation Security Quality Assurance Unit &nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp; Developed By Aviation Security Quality Assurance Unit</span></footer>
+<script>
+// Firebase configuration - hardcoded as requested
+const firebaseConfig = {
+  apiKey: "AIzaSyCR3HHiNQb6XKx3KHD9XQhsv0L2ekKGz48",
+  authDomain: "avsec-risk-register.firebaseapp.com",
+  projectId: "avsec-risk-register",
+  storageBucket: "avsec-risk-register.firebasestorage.app",
+  messagingSenderId: "1074743248954",
+  appId: "1:1074743248954:web:97e50086980e5a92778d03",
+  measurementId: "G-JJMWFDWYLC"
+};
+const firebaseApp = firebase.initializeApp(firebaseConfig);
+try { firebase.analytics(); } catch(e) { console.warn('Firebase analytics not started:', e); }
+const db = firebase.firestore();
+const FIREBASE_COLLECTION = 'avsecRiskAssessmentYearWise';
+const scoreOptions=[1,2,3,4,5,6,7,8,9,10];
+const ratingOptions=['Low - rated as 1 or 2','Medium Low - rated as 3 or 4','Medium - rated as 5 or 6','Medium High - rated as 7 or 8','High - rated as 9 or 10'];
+const riskOptions=['Low','Medium Low','Medium','Medium High','High'];
+const activityTypes=['Audit','Inspection','Test','Observation','Exercises'];
+const entities=['Internal Avsec QA','CAA-SL','CALs','CQ-UL','Other Entity','AASL'];
+const scopes=['Training of personal','Certification of personal','Access Permits - Control Area','Access Control','SRA / Tennent Area','Transfer Baggage','Hold Baggage Protection','Passenger & Cabin Baggage','Aircraft Security','Cargo & mail','Catering','Local Station Audits','Overseas Audit','Contingency Plan','Security Operation'];
+const qaCols=[
+ ['activityReference','Activity Reference','text'],['activityType','Activity Type','select',activityTypes],['entity','Entity','select',entities],['conductBy','Conduct By','text'],['scopeArea','Scope / Area','select',scopes],['date','Date','date'],['station','Station','text'],['riskId','Risk ID','text'],['identifyRisk','Identify AVSEC Risk','textarea'],['existingControl','Existing Control','textarea'],['immediateAction','Immediate Action Taken','textarea'],['probScore','Likelihood Score','select',scoreOptions],['probability','Likelihood','readonlyRating'],['sevScore','Consequences Score','select',scoreOptions],['severity','Consequences','readonlyRating'],['vulScore','Vulnerability Score','select',scoreOptions],['vulnerability','Vulnerability','readonlyRating'],['riskScore','Risk Score','readonly'],['risk','Risk','readonlyRisk'],['correctiveAction','Corrective Action','textarea'],['probScoreAfter','Likelihood Score After CAP','select',scoreOptions],['probAfter','Likelihood After CAP','readonlyRating'],['sevScoreAfter','Consequences Score After CAP','select',scoreOptions],['sevAfter','Consequences After CAP','readonlyRating'],['vulScoreAfter','Vulnerability Score After CAP','select',scoreOptions],['vulAfter','Vulnerability After CAP','readonlyRating'],['riskScoreAfter','Risk Score After CAP','readonly'],['riskAfter','Risk After CAP','readonlyRisk'],['actions','Actions','actions']
+];
+const regCols=[['riskId','Risk ID'],['sourceReference','Source Reference'],['identifyRisk','Identify AVSEC Risk'],['area','Area'],['tolerability','AVSEC Risk Tolerability'],['reviewAction','Review Risk & Mitigation Action'],['probability','Likelihood'],['severity','Consequences'],['residualRisk','Residual Risk Tolerability'],['actions','Actions']];
+let qaData=[];
+let regData=[];
+let currentMode=localStorage.getItem('avsecMode')||'';
+let currentYear=localStorage.getItem('avsecYear')||'';
+function yearKey(type){return type+'Data_'+currentYear;}
+function isAdmin(){return currentMode==='admin';}
+function fillYearSelect(){const sel=document.getElementById('yearSelect'); if(!sel)return; sel.innerHTML=''; for(let y=2025;y<=2100;y++){const opt=document.createElement('option'); opt.value=y; opt.textContent=y; if(String(currentYear||new Date().getFullYear())===String(y))opt.selected=true; sel.appendChild(opt);}}
+function adminLogin(){const u=document.getElementById('loginUser').value.trim();const p=document.getElementById('loginPass').value;if(u==='QAUNIT'&&p==='Airbus@24'){setMode('admin')}else{document.getElementById('loginError').textContent='Invalid admin username or password.'}}
+function viewerLogin(){setMode('viewer')}
+function setMode(m){currentMode=m;localStorage.setItem('avsecMode',m);document.getElementById('loginScreen').style.display='none';fillYearSelect();document.getElementById('yearScreen').style.display='flex';}
+async function enterYear(){
+  currentYear=document.getElementById('yearSelect').value;
+  localStorage.setItem('avsecYear',currentYear);
+  loadLocalYear();
+  unlockApp();
+  await loadCloud(true);
+}
+function backToLogin(){document.getElementById('yearScreen').style.display='none';document.getElementById('loginScreen').style.display='flex';}
+function unlockApp(){document.body.classList.remove('app-locked','viewer-mode','admin-mode');document.body.classList.add(currentMode==='viewer'?'viewer-mode':'admin-mode');document.getElementById('yearScreen').style.display='none';document.getElementById('loginScreen').style.display='none';document.getElementById('modeLabel').textContent=(currentMode==='admin'?'Admin Mode':'Viewer Mode');document.getElementById('yearLabel').textContent='Year: '+currentYear;document.getElementById('yearLabel').classList.remove('hidden');document.getElementById('viewerNoteQA')?.classList.toggle('hidden',currentMode!=='viewer');document.getElementById('viewerNoteReg')?.classList.toggle('hidden',currentMode!=='viewer');renderQA();renderReg();}
+function loadLocalYear(){qaData=JSON.parse(localStorage.getItem(yearKey('qa'))||'[]');regData=JSON.parse(localStorage.getItem(yearKey('reg'))||'[]');if(!qaData.length)addQARow(false);}
+function logoutApp(){localStorage.removeItem('avsecMode');currentMode='';currentYear='';qaData=[];regData=[];document.body.className='app-locked';document.getElementById('loginScreen').style.display='flex';document.getElementById('yearScreen').style.display='none';document.getElementById('modeLabel').textContent='Not logged in';document.getElementById('yearLabel').classList.add('hidden');document.getElementById('loginPass').value='';}
+function guardAdmin(){if(!isAdmin()){alert('Viewer mode is read-only. Please login as Admin to edit.');return false;}return true;}
+function guardYear(){if(!currentYear){alert('Please select assessment year first.');return false;}return true;}
+function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');}
+function init(){fillYearSelect();document.getElementById('qaHead').innerHTML=qaCols.map(c=>`<th>${c[1]}</th>`).join('');document.getElementById('regHead').innerHTML=regCols.map(c=>`<th>${c[1]}</th>`).join(''); if(currentMode){setTimeout(()=>setMode(currentMode),0);}else{renderDashboard();}}
+function ratingFromScore(s){s=Number(s); if(s<=2)return ratingOptions[0]; if(s<=4)return ratingOptions[1]; if(s<=6)return ratingOptions[2]; if(s<=8)return ratingOptions[3]; return ratingOptions[4];}
+function riskFromScore(s){s=Number(s)||0; if(!s)return ''; if(s<=7.5)return 'Low'; if(s<=13.5)return 'Medium Low'; if(s<=19.5)return 'Medium'; if(s<=25.5)return 'Medium High'; return 'High';}
+function riskClass(v){return 'risk-'+String(v||'').toLowerCase().replaceAll(' ','-');}
+function renderDashboard(){
+  const box=document.getElementById('scopeDashboard');
+  if(!box)return;
+  const counts={};
+  scopes.forEach(s=>counts[s]=0);
+  qaData.forEach(r=>{if(r.scopeArea)counts[r.scopeArea]=(counts[r.scopeArea]||0)+1;});
+  const max=Math.max(1,...Object.values(counts));
+  box.innerHTML=Object.entries(counts).map(([area,count])=>`<div class="dash-card"><h4>${area}</h4><div class="dash-count">${count}</div><div class="small">Risk record(s)</div><div class="bar"><span style="width:${(count/max)*100}%"></span></div></div>`).join('');
+}
+function addQARow(render=true){if(render && (!guardYear() || !guardAdmin()))return;qaData.push({riskId:'R-'+String(Date.now()).slice(-6),date:new Date().toISOString().slice(0,10)}); if(render)renderQA();}
+function esc(v){return String(v??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+function viewDiv(value,long=false){return `<div class="view-cell ${long?'long-view':''}" title="${esc(value)}">${esc(value)}</div>`;}
+function renderQA(){const tb=document.querySelector('#qaTable tbody');tb.innerHTML='';qaData.forEach((r,i)=>{calcRow(r);let tr=document.createElement('tr');tr.id='qa-row-'+i;qaCols.forEach(c=>{let td=document.createElement('td');if(c[0]=='actions'){td.innerHTML=isAdmin()?`<button class="btn green admin-action" onclick="sendToRegister(${i})">Send</button> <button class="btn red admin-action" onclick="deleteQARow(${i})">Delete</button>`:'<span class="small">View only</span>'}
+else if(!isAdmin()){ if(c[2]=='readonly'){td.className=riskClass(c[0]=='riskScore'?r.risk:r.riskAfter);td.innerHTML=`<b>${esc(r[c[0]]||'')}</b>`}else if(c[2]=='readonlyRating'){td.className=riskClass((r[c[0]]||'').split(' - ')[0]);td.innerHTML=`<b>${esc(r[c[0]]||'')}</b>`}else if(c[2]=='readonlyRisk'){td.className=riskClass(r[c[0]]);td.innerHTML=`<b>${esc(r[c[0]]||'')}</b>`}else{td.innerHTML=viewDiv(r[c[0]]||'', ['identifyRisk','existingControl','immediateAction','correctiveAction'].includes(c[0]));}}
+else if(c[2]=='select'){td.innerHTML=`<select onchange="updateQAAndRender(${i},'${c[0]}',this.value)">${['',...c[3]].map(o=>`<option ${String(r[c[0]]||'')==String(o)?'selected':''}>${o}</option>`).join('')}</select>`}else if(c[2]=='date'){td.innerHTML=`<input type="date" value="${r[c[0]]||''}" onchange="updateQA(${i},'${c[0]}',this.value)">`}else if(c[2]=='textarea'){td.innerHTML=`<textarea oninput="autoGrow(this);updateQA(${i},'${c[0]}',this.value)">${esc(r[c[0]]||'')}</textarea>`}else if(c[2]=='readonly'){td.className=riskClass(c[0]=='riskScore'?r.risk:r.riskAfter);td.innerHTML=`<b>${esc(r[c[0]]||'')}</b>`}else if(c[2]=='readonlyRating'){td.className=riskClass((r[c[0]]||'').split(' - ')[0]);td.innerHTML=`<b>${esc(r[c[0]]||'')}</b>`}else if(c[2]=='readonlyRisk'){td.className=riskClass(r[c[0]]);td.innerHTML=`<b>${esc(r[c[0]]||'')}</b>`}else{td.innerHTML=`<input value="${esc(r[c[0]]||'')}" oninput="updateQA(${i},'${c[0]}',this.value)">`}tr.appendChild(td)});tb.appendChild(tr)});document.querySelectorAll('textarea').forEach(autoGrow);renderDashboard();saveAll(false)}
+function calcRow(r){['probScore','sevScore','vulScore','probScoreAfter','sevScoreAfter','vulScoreAfter'].forEach(k=>{if(r[k])r[k]=Number(r[k])}); if(r.probScore)r.probability=ratingFromScore(r.probScore); if(r.sevScore)r.severity=ratingFromScore(r.sevScore); if(r.vulScore)r.vulnerability=ratingFromScore(r.vulScore); r.riskScore=(Number(r.probScore)||0)+(Number(r.sevScore)||0)+(Number(r.vulScore)||0)||''; if(r.riskScore)r.risk=riskFromScore(r.riskScore); if(r.probScoreAfter)r.probAfter=ratingFromScore(r.probScoreAfter); if(r.sevScoreAfter)r.sevAfter=ratingFromScore(r.sevScoreAfter); if(r.vulScoreAfter)r.vulAfter=ratingFromScore(r.vulScoreAfter); r.riskScoreAfter=(Number(r.probScoreAfter)||0)+(Number(r.sevScoreAfter)||0)+(Number(r.vulScoreAfter)||0)||''; if(r.riskScoreAfter)r.riskAfter=riskFromScore(r.riskScoreAfter);}
+function updateQA(i,k,v){if(!guardAdmin())return;
+  qaData[i][k]=v;
+  calcRow(qaData[i]);
+  saveAll(false);
+  renderDashboard();
+}
+function updateQAAndRender(i,k,v){if(!guardAdmin())return;
+  qaData[i][k]=v;
+  calcRow(qaData[i]);
+  renderQA();
+}
+function deleteQARow(i){if(!guardAdmin())return;if(confirm('Delete this row?')){qaData.splice(i,1);renderQA();}}
+function sendToRegister(i){if(!guardAdmin())return;let r=qaData[i];calcRow(r);let item={year:currentYear,regRowId:'REG-'+Date.now()+'-'+i,riskId:r.riskId,sourceReference:r.activityReference,identifyRisk:r.identifyRisk,area:r.scopeArea,tolerability:r.riskAfter,reviewAction:r.correctiveAction,probability:r.probAfter||r.probability,severity:r.sevAfter||r.severity,residualRisk:r.riskAfter,sourceIndex:i};regData.push(item);saveAll();renderReg();showPage('register');setTimeout(()=>{let row=document.getElementById(item.regRowId);if(row){row.scrollIntoView({behavior:'smooth',block:'center'});row.classList.add('highlight');}},200)}
+function renderReg(){const tb=document.querySelector('#regTable tbody');tb.innerHTML='';regData.forEach((r,i)=>{let tr=document.createElement('tr');tr.id=r.regRowId||('reg-'+i+'-'+r.riskId);regCols.forEach(c=>{let td=document.createElement('td');if(c[0]=='actions'){td.innerHTML=`<button class="btn primary" onclick="goSource(${r.sourceIndex})">Go Source</button> ${isAdmin()?`<button class="btn red admin-action" onclick="deleteReg(${i})">Delete</button>`:''}`}else if(c[0]=='riskId'){td.innerHTML=`<a href="#" onclick="goSource(${r.sourceIndex});return false"><b>${esc(r.riskId||'')}</b></a>`}
+else if(!isAdmin()){ if(c[0]=='residualRisk')td.className=riskClass(r[c[0]]); td.innerHTML=viewDiv(r[c[0]]||'', ['identifyRisk','reviewAction'].includes(c[0]));}
+else if(['reviewAction','probability','severity','residualRisk'].includes(c[0])){td.innerHTML=`<textarea oninput="autoGrow(this);updateReg(${i},'${c[0]}',this.value)">${esc(r[c[0]]||'')}</textarea>`; if(c[0]=='residualRisk')td.className=riskClass(r[c[0]])}else{td.textContent=r[c[0]]||''}tr.appendChild(td)});tb.appendChild(tr)});document.querySelectorAll('textarea').forEach(autoGrow);saveAll(false)}
+function goSource(i){showPage('qa');setTimeout(()=>{let row=document.getElementById('qa-row-'+i);if(row){row.scrollIntoView({behavior:'smooth',block:'center'});row.classList.add('highlight');setTimeout(()=>row.classList.remove('highlight'),2500)}},150)}
+function updateReg(i,k,v){if(!guardAdmin())return;regData[i][k]=v;saveAll(false)}function deleteReg(i){if(!guardAdmin())return;regData.splice(i,1);renderReg()}
+function saveAll(alertIt=true){if(!currentYear)return;localStorage.setItem(yearKey('qa'),JSON.stringify(qaData));localStorage.setItem(yearKey('reg'),JSON.stringify(regData));if(alertIt)alert('Saved successfully in browser storage for year '+currentYear+'.');}
+async function saveCloud(){if(!guardYear() || !guardAdmin())return;
+  qaData.forEach(calcRow);
+  saveAll(false);
+  const payload={year:currentYear,qa:qaData,reg:regData,savedAt:new Date().toISOString(),updatedBy:currentMode};
+  try{
+    await db.collection(FIREBASE_COLLECTION).doc(String(currentYear)).set(payload,{merge:false});
+    alert('Saved '+currentYear+' data to Firebase successfully.');
+  }catch(err){
+    console.error('Firebase save error:',err);
+    alert('Could not save to Firebase. Check internet connection, Firebase Firestore enabled, and Firestore security rules.');
+  }
+}
+async function loadCloud(silent=false){
+  if(!guardYear())return;
+  try{
+    const snap=await db.collection(FIREBASE_COLLECTION).doc(String(currentYear)).get();
+    if(!snap.exists){
+      qaData=[];regData=[];addQARow(false);saveAll(false);renderQA();renderReg();
+      if(!silent) alert('No Firebase data found for '+currentYear+'. New blank record loaded.');
+      return;
+    }
+    const data=snap.data()||{};
+    qaData=Array.isArray(data.qa)?data.qa:[];
+    regData=Array.isArray(data.reg)?data.reg:[];
+    if(!qaData.length)addQARow(false);
+    saveAll(false);renderQA();renderReg();
+    if(!silent) alert('Loaded '+currentYear+' data from Firebase.');
+  }catch(err){
+    console.error('Firebase load error:',err);
+    if(!silent) alert('Could not load from Firebase. Check internet connection, Firebase Firestore enabled, and Firestore security rules.');
+  }
+}
+
+function clearQA(){if(!guardYear() || !guardAdmin())return;if(confirm('Clear all QA data?')){qaData=[];addQARow(false);renderQA();}}function clearRegister(){if(!guardYear() || !guardAdmin())return;if(confirm('Clear Risk Register?')){regData=[];renderReg();}}
+function autoGrow(el){el.style.height='auto';el.style.height=(el.scrollHeight+4)+'px'}
+function exportExcel(type){if(!guardYear())return;let data,cols,name;if(type=='qa'){data=qaData.map(r=>{calcRow(r);let o={};qaCols.filter(c=>c[0]!='actions').forEach(c=>o[c[1]]=r[c[0]]||'');return o});name='QA_Risk_Assessment_'+(currentYear||'')+'.xlsx'}else{data=regData.map(r=>{let o={};regCols.filter(c=>c[0]!='actions').forEach(c=>o[c[1]]=r[c[0]]||'');return o});name='Risk_Register_'+(currentYear||'')+'.xlsx'}let ws=XLSX.utils.json_to_sheet(data);let wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,type=='qa'?'QA Risk Assessment':'Risk Register');XLSX.writeFile(wb,name)}
+function downloadTemplate(){if(!guardYear())return;let obj={};qaCols.filter(c=>c[0]!='actions').forEach(c=>obj[c[1]]='');let ws=XLSX.utils.json_to_sheet([obj]);let wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Import Template');XLSX.writeFile(wb,'AVSEC_QA_Import_Template.xlsx')}
+function importExcel(e){if(!guardYear() || !guardAdmin())return;let f=e.target.files[0];if(!f)return;let reader=new FileReader();reader.onload=ev=>{let wb=XLSX.read(ev.target.result,{type:'binary'});let ws=wb.Sheets[wb.SheetNames[0]];let rows=XLSX.utils.sheet_to_json(ws);rows.forEach(row=>{let o={};qaCols.filter(c=>c[0]!='actions').forEach(c=>{o[c[0]]=row[c[1]]||''});qaData.push(o)});renderQA();alert('Imported successfully.');};reader.readAsBinaryString(f);}
+init();
+</script>
+</body>
+</html>
