@@ -1,0 +1,16 @@
+README.md
+settings.gradle.kts
+build.gradle.kts
+gradle.properties
+.gitignore
+docs/index.html
+docs/.nojekyll
+.github/workflows/deploy-pages.yml
+.github/workflows/build-apk.yml
+app/build.gradle.kts
+app/src/main/AndroidManifest.xml
+app/src/main/java/com/avsec/qaunit/MainActivity.java
+app/src/main/res/xml/network_security_config.xml
+app/src/main/res/values/styles.xml
+app/src/main/res/values/strings.xml
+app/src/main/res/drawable/ic_launcher_foreground.xml
