@@ -1,0 +1,2306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVSEC Quality Assurance Risk Assessment v7.4 - Department Firebase Edit Persistence Fix</title>
+<!-- v7.4: preserve edited Department Risk Register starter rows after Firebase refresh/load -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-analytics-compat.js"></script>
+<style>
+:root{
+  --blue:#0b3d91;--cyan:#0097a7;--dark:#08233f;--light:#f4f8fb;--danger:#dc3545;--green:#198754;--orange:#fd7e14;
+}
+*{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--light);color:#1b1b1b}
+header{background:linear-gradient(135deg,var(--dark),var(--blue));color:white;padding:16px 22px;position:sticky;top:0;z-index:10;box-shadow:0 2px 8px #0004}
+header h1{margin:0;font-size:22px} nav{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap}
+nav button,.btn{border:0;border-radius:8px;padding:10px 14px;font-weight:bold;cursor:pointer;background:white;color:var(--blue)}
+nav button.active{background:#ffd166;color:#111}.btn.primary{background:var(--blue);color:white}.btn.green{background:var(--green);color:white}.btn.red{background:var(--danger);color:white}.btn.orange{background:var(--orange);color:white}.btn.gray{background:#6c757d;color:white}
+.page{display:none;padding:20px}.page.active{display:block}.card{background:white;border-radius:14px;padding:18px;margin-bottom:18px;box-shadow:0 2px 10px #0001}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.note{border-left:6px solid var(--cyan);padding:12px;background:#e9fbff;border-radius:8px}.matrix{width:100%;border-collapse:collapse}.matrix th,.matrix td{border:1px solid #ccd;padding:8px;text-align:center}.matrix th{background:#123;color:white}
+.risk-chart-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}.chart-table{width:100%;border-collapse:collapse;font-size:13px}.chart-table th,.chart-table td{border:1px solid #777;padding:8px;vertical-align:top}.chart-table th{background:#123;color:white}.chart-title{font-weight:bold;color:var(--blue);font-size:18px;margin:0 0 10px}.vertical-label{writing-mode:vertical-rl;transform:rotate(180deg);font-weight:bold;text-align:center;background:#eaf2ff}.level-high{background:#e53935!important;color:white}.level-medium-high{background:#c47a38!important;color:#111}.level-medium{background:#ffd700!important;color:#111}.level-medium-low{background:#7ac143!important;color:#111}.level-low{background:#37a65a!important;color:white}.formula-box{background:#f7fbff;border:1px solid #d7e6f7;border-radius:10px;padding:12px;margin-top:10px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}.table-wrap{overflow:auto;background:white;border-radius:12px;box-shadow:0 2px 10px #0001;max-height:72vh}
+table.data{border-collapse:separate;border-spacing:0;min-width:4200px;width:max-content} table.data th{position:sticky;top:0;background:#123;color:white;z-index:2;font-size:12px;resize:horizontal;overflow:auto;min-width:120px}
+table.data th,table.data td{border:1px solid #cfd7df;padding:6px;vertical-align:top} table.data td{background:white;min-width:120px} table.data tr:nth-child(even) td{background:#fbfdff}
+input,select,textarea{width:100%;border:1px solid #bac7d5;border-radius:6px;padding:7px;font-size:13px;background:white}textarea{min-height:42px;resize:vertical;overflow:hidden;white-space:pre-wrap;word-break:break-word}.small{font-size:12px;color:#555}.risk-low{background:#37a65a!important;color:white!important}.risk-medium-low{background:#7ac143!important;color:#111!important}.risk-medium{background:#ffd700!important;color:#111!important}.risk-medium-high{background:#c47a38!important;color:#111!important}.risk-high{background:#e53935!important;color:white!important}.highlight td{animation:flash 2s ease-in-out 1;background:#fff176!important}@keyframes flash{0%,100%{background:#fff176}50%{background:#ff9800}}
+.badge{padding:4px 8px;border-radius:12px;font-weight:bold;display:inline-block}.hidden{display:none} footer{text-align:center;color:#666;padding:15px}
+.dashboard{margin-top:18px}.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.dash-card{background:white;border-radius:12px;padding:14px;box-shadow:0 2px 10px #0001;border-left:6px solid var(--blue)}.dash-card h4{margin:0 0 8px 0;font-size:14px;color:var(--dark)}.dash-count{font-size:30px;font-weight:bold;color:var(--blue)}.bar{height:10px;background:#e5eaf0;border-radius:20px;overflow:hidden;margin-top:8px}.bar span{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),var(--blue))}
+
+.login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#061a30,#0b3d91 60%,#0097a7);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}.login-card{width:min(460px,100%);background:white;border-radius:22px;padding:28px;box-shadow:0 20px 60px #0008;text-align:center}.login-card h1{margin:0 0 8px;color:var(--blue);font-size:26px}.login-card p{color:#586675}.login-card input{margin:8px 0;padding:12px;font-size:15px}.login-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.mode-pill{margin-top:8px;display:inline-block;background:#e8f1ff;color:var(--blue);padding:6px 12px;border-radius:20px;font-weight:bold}.app-locked header,.app-locked main,.app-locked section:not(#loginScreen),.app-locked footer{filter:blur(4px);pointer-events:none}.viewer-mode input,.viewer-mode select,.viewer-mode textarea{background:#f3f6f8!important;color:#333;pointer-events:none}.viewer-mode .admin-only{display:none!important}.viewer-mode button.admin-action,.viewer-mode label.admin-action{display:none!important}.marquee-footer{position:fixed;bottom:0;left:0;right:0;background:#08233f;color:white;height:34px;overflow:hidden;z-index:20;display:flex;align-items:center}.marquee-footer span{white-space:nowrap;display:inline-block;padding-left:100%;animation:marquee 22s linear infinite;font-weight:bold;letter-spacing:.4px}@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}body{padding-bottom:34px}.login-error{color:#dc3545;font-weight:bold;min-height:20px;margin-top:8px}.logout-btn{margin-left:auto;background:#ffd166;color:#111}.readonly-note{background:#fff3cd;border-left:5px solid #f0ad4e;padding:10px;border-radius:8px;margin-bottom:10px;font-weight:bold}
+
+/* v7.2 viewer full-text fix */
+.view-cell{white-space:pre-wrap;word-break:break-word;overflow:visible;line-height:1.45;min-height:34px;max-width:520px;}
+.viewer-mode table.data{min-width:3600px;width:max-content;}
+.viewer-mode table.data td{white-space:normal;overflow:visible;height:auto;vertical-align:top;}
+.viewer-mode table.data tr{height:auto;}
+.viewer-mode textarea{height:auto!important;min-height:80px!important;white-space:pre-wrap!important;word-break:break-word!important;overflow:visible!important;}
+.viewer-mode .table-wrap{max-height:none;overflow:auto;}
+.long-view{min-width:280px;max-width:560px;}
+
+.year-screen{position:fixed;inset:0;background:linear-gradient(135deg,#061a30,#0b3d91 60%,#0097a7);display:none;align-items:center;justify-content:center;z-index:9998;padding:20px}.year-card{width:min(430px,100%);background:white;border-radius:22px;padding:28px;box-shadow:0 20px 60px #0008;text-align:center}.year-card h2{margin:0 0 10px;color:var(--blue)}.year-card select{padding:12px;font-size:18px;text-align:center;margin:10px 0}.year-line{display:inline-block;margin-left:8px;background:#fff3cd;color:#111;padding:6px 12px;border-radius:18px;font-weight:bold}
+.sync-status{display:inline-block;margin-left:8px;background:#e8f1ff;color:#0b3d91;padding:6px 12px;border-radius:18px;font-weight:bold;font-size:12px}
+
+
+/* Full-site Firebase backup / restore module */
+.backup-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0}.backup-stat{background:#f7fbff;border:1px solid #d7e6f7;border-radius:12px;padding:14px}.backup-stat b{display:block;color:#0b3d91;font-size:24px;margin-top:4px}.backup-table-wrap{overflow:auto;background:white;border-radius:12px;box-shadow:0 2px 10px #0001}.backup-table{width:100%;border-collapse:collapse;min-width:980px}.backup-table th,.backup-table td{border:1px solid #cfd7df;padding:9px;text-align:left;vertical-align:top}.backup-table th{background:#123;color:white;position:sticky;top:0;z-index:1}.backup-table tr:nth-child(even) td{background:#fbfdff}.backup-reason{max-width:360px;white-space:pre-wrap;word-break:break-word}.backup-empty{text-align:center!important;padding:20px!important;color:#666}.backup-status{display:inline-block;margin-left:8px;padding:6px 12px;border-radius:18px;background:#e8f1ff;color:#0b3d91;font-weight:bold;font-size:12px}
+
+/* Department Risk Register standalone module */
+.area-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px}.area-tab{border:1px solid #c8d7e8;border-radius:999px;background:#eef6ff;color:#0b3d91;padding:9px 12px;font-weight:bold;cursor:pointer}.area-tab.active{background:#ffd166;color:#111;border-color:#e4b84d}.dept-area-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}.dept-area-title h2{margin:0;color:var(--blue)}.dept-table-wrap{overflow:auto;background:white;border-radius:12px;box-shadow:0 2px 10px #0001;max-height:68vh}.dept-table{border-collapse:separate;border-spacing:0;min-width:3300px;width:max-content}.dept-table th{position:sticky;top:0;background:#123;color:white;z-index:2;font-size:12px;min-width:125px}.dept-table th,.dept-table td{border:1px solid #cfd7df;padding:6px;vertical-align:top}.dept-table td{background:white;min-width:125px}.dept-table tr:nth-child(even) td{background:#fbfdff}.dept-table .wide{min-width:260px}.dept-table .controls{min-width:280px}.dept-count{background:#e8f1ff;color:#0b3d91;border-radius:16px;padding:5px 10px;font-weight:bold}.dept-print-title{display:none}
+@media print{@page{size:A3 landscape;margin:8mm}body.print-dept-only header,body.print-dept-only #home,body.print-dept-only #qa,body.print-dept-only #register,body.print-dept-only footer,body.print-dept-only .area-tabs,body.print-dept-only .toolbar{display:none!important}body.print-dept-only #deptRegister{display:block!important;padding:0}body.print-dept-only .dept-print-title{display:block!important;text-align:center;margin:0 0 12px;color:#000}body.print-dept-only .dept-table-wrap{max-height:none;overflow:visible;box-shadow:none}.dept-table{width:100%!important;min-width:0!important;table-layout:fixed;border-collapse:collapse;font-size:7px}.dept-table th,.dept-table td{min-width:0!important;padding:2px!important;word-break:break-word;overflow-wrap:anywhere;white-space:pre-wrap}.dept-table input,.dept-table select,.dept-table textarea{border:0!important;background:transparent!important;font-size:7px!important;padding:0!important;white-space:pre-wrap!important;overflow:visible!important}.dept-table th:last-child,.dept-table td:last-child{display:none!important}}
+
+/* Home-page Excel AVSEC risk matrix */
+.excel-risk-matrix-card{padding:18px}.excel-risk-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}.excel-risk-card-header h2{margin:0;color:var(--blue)}
+.excel-risk-two-col{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:16px;margin-top:14px}.excel-risk-block{margin:14px 0 18px}.excel-risk-heading{margin:0;background:#202b39;color:white;text-align:center;padding:9px 10px;border-radius:8px 8px 0 0;font-size:15px;letter-spacing:.2px}.excel-risk-table-scroll{overflow:auto;border:1px solid #cfd7df;border-top:0;border-radius:0 0 8px 8px;background:white}.excel-risk-table{width:100%;border-collapse:collapse;min-width:720px;font-size:12px}.excel-risk-table th,.excel-risk-table td{border:1px solid #cfd7df;padding:8px;vertical-align:top;white-space:pre-wrap;word-break:break-word;line-height:1.35}.excel-risk-table th{background:#1769aa;color:white;text-align:center}.excel-risk-table td:first-child{font-weight:bold;text-align:center;vertical-align:middle}.calculator-table{min-width:860px}.calculator-table td{vertical-align:middle}.calculator-table select{min-width:100px;background:#fff3cd}.calculator-result{font-size:16px;font-weight:bold;text-align:center!important;vertical-align:middle!important}.compact-risk-table{min-width:690px}.compact-risk-table tbody td:first-child{background:#1769aa!important;color:white!important}.action-risk-table{min-width:650px}.criteria-risk-table{min-width:980px}.consequence-risk-table{min-width:1180px}.excel-risk-source{font-style:italic;color:#667085;margin:4px 0 0}.excel-risk-note{margin:7px 0 0}
+.viewer-mode .home-risk-calculator select{pointer-events:auto!important;background:#fff3cd!important;color:#1b1b1b!important}
+@media(max-width:1100px){.excel-risk-two-col{grid-template-columns:1fr}}
+
+</style>
+</head>
+<body class="app-locked">
+
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <h1>AVSEC Risk Assessment System</h1>
+    <p>Select access mode to continue.</p>
+    <div id="adminLoginBox">
+      <input id="loginUser" placeholder="Admin Username" autocomplete="username">
+      <input id="loginPass" type="password" placeholder="Admin Password" autocomplete="current-password">
+      <button class="btn primary" style="width:100%;margin-top:8px" onclick="adminLogin()">Login as Admin</button>
+    </div>
+    <div class="login-actions">
+      <button class="btn gray" onclick="viewerLogin()">Login as Viewer</button>
+      <button class="btn orange" onclick="document.getElementById('loginPass').focus()">Admin Login</button>
+    </div>
+    <div id="loginError" class="login-error"></div>
+    <span class="mode-pill">Viewer = view only | Admin = edit access</span>
+  </div>
+</div>
+
+<div id="yearScreen" class="year-screen">
+  <div class="year-card">
+    <h2>Select Assessment Year</h2>
+    <p>Data will be saved and automatically loaded year-wise from Firebase.</p>
+    <select id="yearSelect"></select>
+    <button class="btn primary" style="width:100%;margin-top:10px" onclick="enterYear()">Continue</button>
+    <button class="btn gray" style="width:100%;margin-top:8px" onclick="backToLogin()">Back to Login</button>
+    <div class="small" style="margin-top:12px">Available years: 2025 to 2100</div>
+  </div>
+</div>
+
+<header>
+  <h1>AVSEC Quality Assurance Risk Assessment System</h1>
+  <nav>
+    <button onclick="showPage('home')" id="tab-home" class="active">Home</button>
+    <button onclick="showPage('qa')" id="tab-qa">Quality Assurance Risk Assessment</button>
+    <button onclick="showPage('register')" id="tab-register">Risk Register</button>
+    <button onclick="showPage('deptRegister')" id="tab-deptRegister">Department Risk Register</button>
+    <button onclick="showPage('backup')" id="tab-backup">Backup</button>
+    <button class="logout-btn" onclick="logoutApp()">Logout</button>
+    <span id="modeLabel" class="mode-pill">Not logged in</span><span id="yearLabel" class="year-line hidden">Year: -</span><span id="syncStatus" class="sync-status hidden">Firebase: Ready</span>
+  </nav>
+</header>
+
+<section id="home" class="page active">
+  <div class="card">
+    <h2>AVSEC Risk Assessment</h2>
+    <p>This web application is designed to record aviation security quality assurance risks, calculate risk scores, document immediate and corrective actions, determine residual risk after CAP, and transfer selected records to the final Risk Register.</p>
+    <div class="note"><b>ICAO based approach:</b> An aviation security risk assessment should be evidence-based and aligned with ICAO security management principles, considering likelihood, vulnerability, consequences, existing controls, corrective action, monitoring, and periodic review. Use this tool as an operational QA risk tracking register.</div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Methodology</h3>
+      <p><b>Risk Score = Likelihood + Consequences + Vulnerability</b></p>
+      <p>The score is calculated on a 3.0–30 scale and the system automatically assigns the risk tolerability level.</p>
+    </div>
+    <div class="card">
+      <h3>Risk Tolerability</h3>
+      <p><span class="badge risk-low">Low</span> 3.0 to 7.5</p>
+      <p><span class="badge risk-medium-low">Medium Low</span> 7.6 to 13.5</p>
+      <p><span class="badge risk-medium">Medium</span> 13.6 to 19.5</p>
+      <p><span class="badge risk-medium-high">Medium High</span> 19.6 to 25.5</p>
+      <p><span class="badge risk-high">High</span> 25.6 to 30</p>
+    </div>
+    <div class="card">
+      <h3>QA Sources</h3>
+      <p>Findings identified through audits, inspections, tests, observations, and exercises can be recorded here for corrective action tracking and review.</p>
+    </div>
+  </div>
+
+
+  <div class="card excel-risk-matrix-card">
+    <div class="excel-risk-card-header">
+      <div>
+        <h2>AVSEC Risk Assessment Matrix</h2>
+      </div>
+    </div>
+
+    <div class="excel-risk-block home-risk-calculator">
+  <h3 class="excel-risk-heading">RISK SCORE CALCULATOR</h3>
+  <div class="excel-risk-table-scroll">
+    <table class="excel-risk-table calculator-table">
+      <thead>
+        <tr>
+          <th>Threat (T)</th>
+          <th>Consequence (C)</th>
+          <th>Vulnerability (V)</th>
+          <th>Total risk score</th>
+          <th>Risk rating</th>
+          <th>How to use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><select id="homeRiskThreat" onchange="updateHomeRiskCalculator()"><option value="">Select</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select></td>
+          <td><select id="homeRiskConsequence" onchange="updateHomeRiskCalculator()"><option value="">Select</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select></td>
+          <td><select id="homeRiskVulnerability" onchange="updateHomeRiskCalculator()"><option value="">Select</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select></td>
+          <td id="homeRiskTotal" class="calculator-result">-</td>
+          <td id="homeRiskRating" class="calculator-result">-</td>
+          <td>Enter scores from 1 to 10 in the first three cells. The total and rating calculate automatically.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+    <div class="excel-risk-two-col">
+      <div class="excel-risk-block">
+  <h3 class="excel-risk-heading">RISK SCORE BANDS</h3>
+  <div class="excel-risk-table-scroll">
+    <table class="excel-risk-table compact-risk-table">
+      <thead><tr><th>Band</th><th>Threat (T)</th><th>Consequence (C)</th><th>Vulnerability (V)</th><th>Risk score</th><th>Risk rating</th></tr></thead>
+      <tbody>
+        <tr><td class="level-high">HIGH</td><td>9-10</td><td>9-10</td><td>9-10</td><td>25.6 to 30</td><td class="level-high">HIGH</td></tr>
+        <tr><td class="level-medium-high">MEDIUM-HIGH</td><td>7-8</td><td>7-8</td><td>7-8</td><td>19.6 to 25.5</td><td class="level-medium-high">MEDIUM-HIGH</td></tr>
+        <tr><td class="level-medium">MEDIUM</td><td>5-6</td><td>5-6</td><td>5-6</td><td>13.6 to 19.5</td><td class="level-medium">MEDIUM</td></tr>
+        <tr><td class="level-medium-low">MEDIUM-LOW</td><td>3-4</td><td>3-4</td><td>3-4</td><td>7.6 to 13.5</td><td class="level-medium-low">MEDIUM-LOW</td></tr>
+        <tr><td class="level-low">LOW</td><td>1-2</td><td>1-2</td><td>1-2</td><td>3.0 to 7.5</td><td class="level-low">LOW</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+      <div class="excel-risk-block">
+  <h3 class="excel-risk-heading">RISK RATING ACTIONS</h3>
+  <div class="excel-risk-table-scroll">
+    <table class="excel-risk-table action-risk-table">
+      <thead><tr><th>Risk level</th><th>Required action</th></tr></thead>
+      <tbody>
+        <tr><td class="level-high">HIGH Risk:</td><td>Requires immediate action in the form of specific counter measures or emergency procedures</td></tr>
+        <tr><td class="level-medium-high">MEDIUM-HIGH Risk:</td><td>Requires specific actions to address with appropriate counter measures</td></tr>
+        <tr><td class="level-medium">MEDIUM Risk:</td><td>Requires positive action on the part of management to address with appropriate counter measures</td></tr>
+        <tr><td class="level-medium-low">MEDIUM-LOW Risk:</td><td>Requires review of existing measures to identify possible improvements</td></tr>
+        <tr><td class="level-low">LOW Risk:</td><td>Managed by existing measures – can be accepted with minimal or no action</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+    </div>
+
+    <div class="excel-risk-block">
+  <h3 class="excel-risk-heading">LIKELIHOOD CRITERIA</h3>
+  <div class="excel-risk-table-scroll">
+    <table class="excel-risk-table criteria-risk-table">
+      <thead><tr><th>Likelihood rating</th><th>Adversarial scenario</th><th>Management / control failure</th></tr></thead>
+      <tbody>
+        <tr><td class="level-high">a) HIGH (rated as 9 or 10)</td><td>A highly credible and imminent scenario. An act of unlawful interference of this type has occurred against a comparable target in the past few years; or there is confirmed, current evidence of adversary capability, intent, and active operational planning directed at this or a comparable target.</td><td>A confirmed, ongoing or recently concluded systemic breakdown of a critical security control, affecting the organization broadly. The failure has persisted over a significant period, no effective compensatory measures have been applied, and the probability of a security consequence arising directly from this failure is very high.</td></tr>
+        <tr><td class="level-medium-high">b) MEDIUM-HIGH (rated as 7 or 8)</td><td>A clearly credible scenario. Relatively recent examples of comparable acts of unlawful interference exist; or there is credible evidence of early-stage planning, hostile surveillance, or reconnaissance directed at this target or target category.</td><td>A significant control failure confirmed across multiple personnel, positions, or locations. Compensatory measures have not been implemented or are demonstrably inadequate. The probability of a security consequence is elevated and the organisation&#x27;s exposure is not contained.</td></tr>
+        <tr><td class="level-medium">c) MEDIUM (rated as 5 or 6)</td><td>An essentially credible scenario supported by some evidence of adversary intent and capability, and possibly some historical precedent, but with no confirmed evidence of current operational planning against this target.</td><td>A control failure of limited scope, confined to an isolated group of personnel or a single location. Some compensatory measures may exist but their effectiveness has not been verified. The probability of a security consequence is moderate and dependent on whether the gap is exploited.</td></tr>
+        <tr><td class="level-medium-low">d) MEDIUM-LOW (rated as 3 or 4)</td><td>A scenario for which there are no, or no recent, examples of an act of unlawful interference of this type. Some evidence of adversary intent exists, but the method appears insufficiently developed for a successful act or has likely been superseded by other methods of attack.</td><td>A minor or short-duration control deficiency. Effective compensatory measures were applied during the gap period, limiting exposure. The deficiency has been identified through routine monitoring and does not indicate broader systemic weakness. The probability of a security consequence is low.</td></tr>
+        <tr><td class="level-low">e) LOW (rated as 1 or 2)</td><td>A theoretically plausible scenario but with no historical examples, no signs of active planning, and no apparent adversary capability currently directed at this target type.</td><td>An isolated, promptly identified, and fully remediated control deficiency. Compensatory measures were in place and effective throughout the gap period. The deficiency is attributable to an individual administrative oversight rather than any systemic weakness.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+    <div class="excel-risk-block">
+  <h3 class="excel-risk-heading">CONSEQUENCES / IMPACT CRITERIA</h3>
+  <div class="excel-risk-table-scroll">
+    <table class="excel-risk-table criteria-risk-table consequence-risk-table">
+      <thead><tr><th>Impact rating</th><th>Security effectiveness</th><th>Regulatory &amp; Legal</th><th>Reputational &amp; Operational</th></tr></thead>
+      <tbody>
+        <tr><td class="level-high">HIGH (rated as 9 or 10)</td><td>Hundreds of deaths. Billions of USD in direct economic impact. Severe and sustained disruption to services and confidence in the civil aviation system.</td><td>Suspension or revocation of operating authorization. Criminal prosecution of individuals or the organization. Mandatory State-level regulatory intervention.</td><td>Total and sustained loss of passenger and stakeholder confidence. Prolonged operational shutdown. Significant long-term reputational damage at international level.</td></tr>
+        <tr><td class="level-medium-high">MEDIUM-HIGH (rated as 7 or 8)</td><td>Some but not all of the HIGH security effectiveness consequences above.</td><td>Formal non-conformity finding requiring a mandatory corrective action plan. Potential enforcement notice or financial penalty. Regulatory intervention in operations.</td><td>Significant reputational damage at regional or national level. Substantial operational disruption requiring major management intervention and resource reallocation.</td></tr>
+        <tr><td class="level-medium">MEDIUM (rated as 5 or 6)</td><td>Tens of deaths. Tens or hundreds of millions of USD in direct economic impact. Substantial disruption to services and confidence in the aviation system.</td><td>Audit finding (non-conformity or observation) requiring documented corrective action. Regulatory notification obligation triggered. Material risk of follow-up inspection.</td><td>Moderate reputational harm. Operational disruption requiring resource reallocation. Coverage in industry or trade media. Internal management escalation required.</td></tr>
+        <tr><td class="level-medium-low">MEDIUM-LOW (rated as 3 or 4)</td><td>Some but not all of the MEDIUM security effectiveness consequences above. Possibly some deaths and injuries; limited economic impact; some disruption to system confidence.</td><td>Audit observation or minor finding. Documented in the compliance record. Corrective action recommended but no formal enforcement action anticipated.</td><td>Minor reputational impact, contained within the organisation. Operationally disruptive but manageable within existing resources and without external escalation.</td></tr>
+        <tr><td class="level-low">LOW (rated as 1 or 2)</td><td>Possibly some injuries. Limited economic impact. Some disruption to services and confidence in the aviation system.</td><td>Administrative noting or improvement observation only. No formal audit finding. No regulatory notification obligation triggered.</td><td>Negligible reputational impact. Minimal operational disruption. Managed through routine internal processes with no external visibility.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+    <div class="excel-risk-block">
+  <h3 class="excel-risk-heading">VULNERABILITY CRITERIA</h3>
+  <div class="excel-risk-table-scroll">
+    <table class="excel-risk-table criteria-risk-table">
+      <thead><tr><th>Vulnerability rating</th><th>General mitigation position</th><th>Competency / control-failure risk detail</th></tr></thead>
+      <tbody>
+        <tr><td class="level-high">a) HIGH (rated as 9 or 10)</td><td>No mitigating measures are in general effect, either because no Annex 17 / ISARP requirement applies or because no realistic effective measure is available.</td><td>no training currency tracking system exists; no competency validation or supervisory verification mechanism is in place; the organization has no visibility of the gap.</td></tr>
+        <tr><td class="level-medium-high">b) MEDIUM-HIGH (rated as 7 or 8)</td><td>Mitigation exists but has limited scope; important areas or aspects of the risk are not covered by requirements or measures in general effect.</td><td>a training tracking system exists but is demonstrably failing — multiple expired records went undetected; no effective supervisory override is in place; no compensatory competency validation has been conducted.</td></tr>
+        <tr><td class="level-medium">c) MEDIUM (rated as 5 or 6)</td><td>Features of both MEDIUM-HIGH and MEDIUM-LOW are present; mitigation is partially effective.</td><td>training records are partially maintained but oversight gaps exist; supervisory verification of currency status is inconsistent; some but not all affected personnel have been identified.</td></tr>
+        <tr><td class="level-medium-low">d) MEDIUM-LOW (rated as 3 or 4)</td><td>Mitigating measures are generally in place but may be immature or only partially effective. The broad Annex 17 / ISARP requirements are met but are capable of further development.</td><td>training tracking is in place and largely current; isolated exceptions exist but are identified promptly through routine monitoring.</td></tr>
+        <tr><td class="level-low">e) LOW (rated as 1 or 2)</td><td>Clear Annex 17 / ISARP requirements exist and mitigating measures generally regarded as effective are in widespread use.</td><td>a robust training management system is in place with automated expiry alerts; supervisory verification is conducted routinely; documented compensatory procedures exist for any gap period.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+    <p class="small excel-risk-source">Source: AVSEC Risk Assessment Matrix.docx | Reorganized into editable tables.</p>
+  </div>
+</section>
+
+<section id="qa" class="page">
+  <div class="toolbar">
+    <button class="btn primary" onclick="addQARow()">+ Add Row</button><button class="btn green" onclick="saveCloud()">Save to Firebase</button><button class="btn gray" onclick="loadCloud()">Load from Firebase</button><button class="btn orange" onclick="downloadTemplate()">Download Import Template</button><label class="btn gray">Import Excel<input type="file" id="importFile" accept=".xlsx,.xls" class="hidden" onchange="importExcel(event)"></label><button class="btn green" onclick="exportExcel('qa')">Export Excel</button><button class="btn red" onclick="clearQA()">Clear QA Table</button>
+    <span class="small">Column borders can be dragged to adjust width. Text areas auto-expand while typing.</span>
+  </div>
+  <div class="table-wrap"><table class="data" id="qaTable"><thead><tr id="qaHead"></tr></thead><tbody></tbody></table></div>
+  <div class="dashboard card">
+    <h2>Dashboard - Risk Count by Scope / Area</h2>
+    <div id="scopeDashboard" class="dash-grid"></div>
+  </div>
+</section>
+
+<section id="register" class="page">
+  <div id="viewerNoteReg" class="readonly-note hidden">Viewer mode: Risk Register is read-only. Login as Admin to edit, delete or save.</div><div class="toolbar"><button class="btn green admin-action" onclick="saveCloud()">Save to Firebase</button><button class="btn gray" onclick="loadCloud()">Load from Firebase</button><button class="btn green" onclick="exportExcel('register')">Export Excel</button><button class="btn red admin-action" onclick="clearRegister()">Clear Risk Register</button></div>
+  <div class="table-wrap"><table class="data" id="regTable"><thead><tr id="regHead"></tr></thead><tbody></tbody></table></div>
+</section>
+
+<section id="deptRegister" class="page">
+  <div id="viewerNoteDept" class="readonly-note hidden">Viewer mode: Department Risk Register is read-only. Login as Admin to edit, delete, import or save.</div>
+  <div class="card">
+    <h2>Department Risk Register</h2>
+    <p class="small">This module is independent from Quality Assurance Risk Assessment and Risk Register. Each area has a separate table with separate Firebase year-wise storage. Risk column uses risk wording, not finding/scenario wording.</p>
+    <div id="deptAreaTabs" class="area-tabs"></div>
+  </div>
+  <div class="card">
+    <div class="dept-area-title">
+      <h2 id="deptCurrentAreaTitle">Area</h2>
+      <span id="deptCurrentCount" class="dept-count">0 record(s)</span>
+    </div>
+    <div class="toolbar">
+      <button class="btn primary admin-action" onclick="addDeptRiskRow()">+ Add Row</button>
+      <button class="btn green admin-action" onclick="saveDeptRiskCloud()">Save to Firebase</button>
+      <button class="btn gray" onclick="loadDeptRiskCloud()">Load from Firebase</button>
+      <button class="btn orange" onclick="downloadDeptRiskTemplate()">Download Import Template</button>
+      <label class="btn gray admin-action">Import Excel<input type="file" id="deptImportFile" accept=".xlsx,.xls" class="hidden" onchange="importDeptRiskExcel(event)"></label>
+      <button class="btn green" onclick="exportDeptRiskExcel()">Export Excel</button>
+      <button class="btn orange" onclick="downloadDeptRiskPDF()">Save PDF</button>
+      <button class="btn gray" onclick="printDeptRiskPDF()">Print Preview</button>
+      <button class="btn red admin-action" onclick="clearDeptRiskArea()">Clear Area Table</button>
+    </div>
+    <h2 id="deptPrintTitle" class="dept-print-title"></h2>
+    <div class="dept-table-wrap"><table class="dept-table" id="deptRiskTable"><thead><tr id="deptRiskHead"></tr></thead><tbody></tbody></table></div>
+  </div>
+</section>
+
+<section id="backup" class="page">
+  <div class="card">
+    <h2>Full Site Backup & Restore</h2>
+    <p class="small">Each successful Firebase change creates a full-site snapshot for the selected year. A snapshot includes Quality Assurance Risk Assessment, Risk Register and all Department Risk Register area tables. Only the latest 20 snapshots are retained; when snapshot 21 is created, the oldest snapshot is automatically deleted.</p>
+    <div class="toolbar">
+      <button class="btn green admin-action" onclick="queueFullSiteBackup('Manual backup',true).then(()=>loadFullSiteBackups())">Create Backup Now</button>
+      <button class="btn gray" onclick="loadFullSiteBackups()">Refresh Backup List</button>
+      <span id="backupStatus" class="backup-status">Select a year to load backups</span>
+    </div>
+    <div class="backup-grid">
+      <div class="backup-stat">Selected Year<b id="backupSelectedYear">-</b></div>
+      <div class="backup-stat">Available Backups<b id="backupAvailableCount">0 / 20</b></div>
+      <div class="backup-stat">Latest Backup<b id="backupLatestTime" style="font-size:15px">Not loaded</b></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="backup-table-wrap">
+      <table class="backup-table">
+        <thead><tr><th>No.</th><th>Backup Time</th><th>Reason</th><th>QA Rows</th><th>Risk Register Rows</th><th>Department Rows</th><th>Mode</th><th>Action</th></tr></thead>
+        <tbody id="backupTableBody"><tr><td colspan="8" class="backup-empty">Open this page after selecting a year.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<footer class="marquee-footer"><span>Developed By Aviation Security Quality Assurance Unit &nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp; Developed By Aviation Security Quality Assurance Unit &nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp; Developed By Aviation Security Quality Assurance Unit</span></footer>
+<script>
+// Firebase configuration - hardcoded as requested
+const firebaseConfig = {
+  apiKey: "AIzaSyCR3HHiNQb6XKx3KHD9XQhsv0L2ekKGz48",
+  authDomain: "avsec-risk-register.firebaseapp.com",
+  projectId: "avsec-risk-register",
+  storageBucket: "avsec-risk-register.firebasestorage.app",
+  messagingSenderId: "1074743248954",
+  appId: "1:1074743248954:web:97e50086980e5a92778d03",
+  measurementId: "G-JJMWFDWYLC"
+};
+const firebaseApp = firebase.initializeApp(firebaseConfig);
+try { firebase.analytics(); } catch(e) { console.warn('Firebase analytics not started:', e); }
+const db = firebase.firestore();
+const FIREBASE_COLLECTION = 'avsecRiskAssessmentYearWise';
+const BACKUP_FIREBASE_COLLECTION = 'avsecFullSiteBackupsYearWise';
+const BACKUP_LIMIT = 20;
+const scoreOptions=[1,2,3,4,5,6,7,8,9,10];
+const ratingOptions=['Low - rated as 1 or 2','Medium Low - rated as 3 or 4','Medium - rated as 5 or 6','Medium High - rated as 7 or 8','High - rated as 9 or 10'];
+const riskOptions=['Low','Medium Low','Medium','Medium High','High'];
+const activityTypes=['Audit','Inspection','Test','Observation','Exercises'];
+const entities=['Internal Avsec QA','CAA-SL','CALs','CQ-UL','Other Entity','AASL'];
+const scopes=['Training of personal','Certification of personal','Access Permits - Control Area','Access Control','SRA / Tennent Area','Transfer Baggage','Hold Baggage Protection','Passenger & Cabin Baggage','Aircraft Security','Cargo & mail','Catering','Local Station Audits','Overseas Audit','Contingency Plan','Security Operation'];
+const qaCols=[
+ ['activityReference','Activity Reference','text'],['activityType','Activity Type','select',activityTypes],['entity','Entity','select',entities],['conductBy','Conduct By','text'],['scopeArea','Scope / Area','select',scopes],['date','Date','date'],['station','Station','text'],['riskId','Risk ID','text'],['identifyRisk','Identify AVSEC Risk','textarea'],['existingControl','Existing Control','textarea'],['immediateAction','Immediate Action Taken','textarea'],['probScore','Likelihood Score','select',scoreOptions],['probability','Likelihood','readonlyRating'],['sevScore','Consequences Score','select',scoreOptions],['severity','Consequences','readonlyRating'],['vulScore','Vulnerability Score','select',scoreOptions],['vulnerability','Vulnerability','readonlyRating'],['riskScore','Risk Score','readonly'],['risk','Risk','readonlyRisk'],['correctiveAction','Corrective Action','textarea'],['probScoreAfter','Likelihood Score After CAP','select',scoreOptions],['probAfter','Likelihood After CAP','readonlyRating'],['sevScoreAfter','Consequences Score After CAP','select',scoreOptions],['sevAfter','Consequences After CAP','readonlyRating'],['vulScoreAfter','Vulnerability Score After CAP','select',scoreOptions],['vulAfter','Vulnerability After CAP','readonlyRating'],['riskScoreAfter','Risk Score After CAP','readonly'],['riskAfter','Risk After CAP','readonlyRisk'],['actions','Actions','actions']
+];
+const regCols=[['riskId','Risk ID'],['sourceReference','Source Reference'],['identifyRisk','Identify AVSEC Risk'],['area','Area'],['tolerability','AVSEC Risk Tolerability'],['reviewAction','Review Risk & Mitigation Action'],['probability','Likelihood'],['severity','Consequences'],['residualRisk','Residual Risk Tolerability'],['actions','Actions']];
+
+const deptRiskAreas=['AVSEC TRAINING','ACCESS CONTROL','AIRCRAFT SECURITY','CARGO & MAIL SECURITY','CATERING SECURITY','EMPLOYEES SCREENING AT SECURITY','HOLD BAGGAGE SECURITY','PASSENGERS & CABIN BAGGAGE','STORES & SUPPLIES SECURITY','SURVEILLANCE & CCTV MONITORING','TRANSFER BAGGAGE SECURITY'];
+const deptRiskCols=[
+ ['riskId','Risk ID','text'],['riskText','Risk','textarea'],
+ ['probScore','Likelihood Score','select',scoreOptions],['probability','Likelihood','readonlyRating'],['sevScore','Consequences Score','select',scoreOptions],['severity','Consequences','readonlyRating'],['vulScore','Vulnerability Score','select',scoreOptions],['vulnerability','Vulnerability','readonlyRating'],['riskScore','Risk Score','readonly'],['risk','Risk','readonlyRisk'],
+ ['currentControls','Current Controls','textarea'],
+ ['probScoreAfter','Likelihood Score','select',scoreOptions],['probAfter','Likelihood','readonlyRating'],['sevScoreAfter','Consequences Score','select',scoreOptions],['sevAfter','Consequences','readonlyRating'],['vulScoreAfter','Vulnerability Score','select',scoreOptions],['vulAfter','Vulnerability','readonlyRating'],['riskScoreAfter','Risk Score','readonly'],['riskAfter','Risk','readonlyRisk'],['actions','Actions','actions']
+];
+// Annex 17 standard-derived starter data for Department Risk Register tables
+const deptRiskSeedData = {
+  "AVSEC TRAINING": [
+    {
+      "riskId": "TRN-001",
+      "riskText": "Ineffective implementation of aviation security controls",
+      "probScore": 6,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Initial and recurrent AVSEC training, competency assessment, OJT records, supervisor monitoring and refresher training for personnel implementing AVSEC measures.",
+      "probScoreAfter": 3,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "TRN-002",
+      "riskText": "Non-detection of weapons, explosives or prohibited items",
+      "probScore": 6,
+      "sevScore": 10,
+      "vulScore": 6,
+      "currentControls": "Certified screener training, recurrent image interpretation/prohibited item training, competency testing, supervisor checks and remedial training.",
+      "probScoreAfter": 3,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "TRN-003",
+      "riskText": "Incompetent personnel performing AVSEC functions",
+      "probScore": 5,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Training policy, role-based course completion, certification/authorization before duty allocation and periodic competency review.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "TRN-004",
+      "riskText": "Ineffective AVSEC quality control oversight",
+      "probScore": 5,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Trained audit/inspection/test personnel, QA programme, standardized checklists, independent oversight and corrective action verification.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "TRN-005",
+      "riskText": "Insider facilitation of unlawful interference",
+      "probScore": 4,
+      "sevScore": 9,
+      "vulScore": 6,
+      "currentControls": "Security awareness training for unescorted airside/SRA personnel, background check confirmation, security culture briefings and confidential reporting.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "TRN-006",
+      "riskText": "Unauthorized disclosure of sensitive aviation security information",
+      "probScore": 4,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Need-to-know information access, document control, confidentiality instructions, security awareness training and management review of access permissions.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    }
+  ],
+  "ACCESS CONTROL": [
+    {
+      "riskId": "AC-001",
+      "riskText": "Unauthorized access to airside area",
+      "probScore": 6,
+      "sevScore": 8,
+      "vulScore": 7,
+      "currentControls": "Airside access points controlled, ID/access permit verification, operational need confirmation, access logs, CCTV monitoring and patrol checks.",
+      "probScoreAfter": 3,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AC-002",
+      "riskText": "Unauthorized access to Security Restricted Area",
+      "probScore": 7,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "SRA boundaries established, controlled entry points, access authorization verification, checkpoint supervision and CCTV/patrol monitoring.",
+      "probScoreAfter": 3,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AC-003",
+      "riskText": "Unauthorized person access to airside or Security Restricted Area",
+      "probScore": 6,
+      "sevScore": 8,
+      "vulScore": 7,
+      "currentControls": "Person identification system, access card/permit checks, biometric/manual verification, visitor escort procedures and random compliance checks.",
+      "probScoreAfter": 3,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AC-004",
+      "riskText": "Unauthorized vehicle access to airside or Security Restricted Area",
+      "probScore": 6,
+      "sevScore": 8,
+      "vulScore": 7,
+      "currentControls": "Vehicle permits, driver authorization checks, vehicle gate records, vehicle screening/search and escort/control requirements.",
+      "probScoreAfter": 3,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AC-005",
+      "riskText": "Access by persons without operational need or legitimate reason",
+      "probScore": 5,
+      "sevScore": 7,
+      "vulScore": 6,
+      "currentControls": "Operational need approval, role-based access levels, pass issue controls, periodic access review and supervisor authorization.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 6,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AC-006",
+      "riskText": "Misuse of identification or access permit",
+      "probScore": 6,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "ID/pass issue and return procedure, expiry control, lost pass reporting, anti-passback/spot checks and disciplinary action for misuse.",
+      "probScoreAfter": 3,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AC-007",
+      "riskText": "Unauthorized access to aircraft",
+      "probScore": 6,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Aircraft stand supervision, controlled movement to/from aircraft, staff/vehicle authorization checks, patrols, CCTV and aircraft operator coordination.",
+      "probScoreAfter": 3,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AC-008",
+      "riskText": "Unauthorized interference with aircraft",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Supervision of persons/vehicles near aircraft, stand security patrols, access authorization checks and reporting/escalation procedures.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AC-009",
+      "riskText": "Introduction of prohibited articles into Security Restricted Area by staff or non-passengers",
+      "probScore": 6,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Screening of persons other than passengers, item screening, random/unpredictable checks, prohibited item guidance and supervisor monitoring.",
+      "probScoreAfter": 3,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AC-010",
+      "riskText": "Introduction of explosives or explosive devices into Security Restricted Area",
+      "probScore": 5,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Appropriate screening methods, explosive detection capability where available, unpredictable staff screening and secondary search procedures.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AC-011",
+      "riskText": "Predictable staff screening leading to security bypass",
+      "probScore": 5,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Random and unpredictable screening schedule, rotating screening locations/methods, supervisor oversight and QA testing.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AC-012",
+      "riskText": "Introduction of weapons, explosives or prohibited articles through vehicles",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Vehicle screening/search, under-vehicle checks where applicable, cargo/item checks, vehicle pass control and unpredictable security controls.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    }
+  ],
+  "AIRCRAFT SECURITY": [
+    {
+      "riskId": "AS-001",
+      "riskText": "Suspicious object, weapon, explosive or prohibited article remaining on aircraft",
+      "probScore": 5,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Aircraft security check/search procedure, trained search team, checklist use, supervisor sign-off and records before departure.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AS-002",
+      "riskText": "Aircraft departure without required security check/search",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Mandatory check/search trigger, departure checklist, airline/ground handler confirmation, supervisor verification and QA inspection.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AS-003",
+      "riskText": "Inappropriate aircraft security check/search level selected against the risk condition",
+      "probScore": 4,
+      "sevScore": 9,
+      "vulScore": 6,
+      "currentControls": "Risk-based decision criteria, threat information review, authority/operator coordination and supervisor approval of check/search type.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AS-004",
+      "riskText": "Item left behind by transit passenger remaining on aircraft",
+      "probScore": 5,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Transit cabin check, seat pocket/overhead bin inspection, cleaning crew security briefing and suspicious item reporting procedure.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AS-005",
+      "riskText": "Unauthorized entry to flight crew compartment",
+      "probScore": 4,
+      "sevScore": 10,
+      "vulScore": 6,
+      "currentControls": "Flight crew compartment access control, crew procedures, door security, crew awareness and operator security programme controls.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AS-006",
+      "riskText": "Unauthorized interference with aircraft after security check/search completion",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Aircraft protected after search/check, access control until departure, door/seal control, patrol/CCTV and accountable handover.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AS-007",
+      "riskText": "Contamination of secured aircraft before departure",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Controlled access after security check, service provider supervision, aircraft stand monitoring and re-check procedure if integrity is compromised.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AS-008",
+      "riskText": "Unlawful interference with aircraft parked outside Security Restricted Area",
+      "probScore": 4,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Security controls for aircraft outside SRA, patrols, lighting/CCTV where available, access restrictions and local risk-based protective measures.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AS-009",
+      "riskText": "Unauthorized access to aircraft outside Security Restricted Area",
+      "probScore": 5,
+      "sevScore": 8,
+      "vulScore": 7,
+      "currentControls": "Temporary controlled area, guarding/patrols, aircraft operator supervision, authorization checks and coordination with airport security.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AS-010",
+      "riskText": "Attack against aircraft using MANPADS or similar weapon",
+      "probScore": 3,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Risk assessment for stand/approach areas, perimeter observation, law-enforcement coordination, reporting of suspicious activity and protective procedures.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "AS-011",
+      "riskText": "Ground-based weapon attack against aircraft at or near airport",
+      "probScore": 3,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Landside/airside surveillance, patrol coordination, threat reporting, response plans and liaison with relevant national/local authorities.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    }
+  ],
+  "CARGO & MAIL SECURITY": [
+    {
+      "riskId": "CMS-001",
+      "riskText": "Unscreened cargo loaded onto aircraft",
+      "probScore": 5,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Cargo screening/security controls before loading, acceptance verification, regulated agent/known consignor controls and loading authorization.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CMS-002",
+      "riskText": "Unscreened mail loaded onto aircraft",
+      "probScore": 5,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Mail security controls/screening where practicable, acceptance verification, screening records and accountable handover.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CMS-003",
+      "riskText": "Prohibited article introduced onto aircraft through cargo or mail",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Cargo/mail screening, shipment inspection, secure supply chain controls, threat item resolution and high-risk cargo procedures.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CMS-004",
+      "riskText": "Unsecured cargo/mail supply chain",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Approved regulated agent/known consignor process, secure chain documentation, audits, facility controls and stakeholder oversight.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CMS-005",
+      "riskText": "Cargo or mail accepted from unapproved regulated agent or known consignor",
+      "probScore": 4,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Approval status verification, accepted shipper lists, acceptance SOP, staff training and periodic validation of entities.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CMS-006",
+      "riskText": "Unauthorized interference with cargo or mail after screening/security controls",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Protected cargo/mail areas, access control, CCTV/patrol, tamper checks and secure handover until aircraft departure.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CMS-007",
+      "riskText": "Cargo/mail security integrity lost before aircraft departure",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Chain of custody controls, security status verification, tamper reporting and re-screening/security control when integrity is compromised.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CMS-008",
+      "riskText": "High-risk cargo or mail loaded without enhanced security measures",
+      "probScore": 4,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "High-risk cargo identification, enhanced screening/security controls, approval/escalation procedure and loading restriction until cleared.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CMS-009",
+      "riskText": "Threat associated with high-risk cargo or mail not mitigated",
+      "probScore": 4,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Threat assessment, enhanced measures, authority/operator coordination, additional screening and secure handling procedures.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CMS-010",
+      "riskText": "Cargo or mail accepted without confirmation of security controls",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 6,
+      "currentControls": "Acceptance checklist, security control confirmation by approved entity, accountable records and rejection/screening if confirmation unavailable.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CMS-011",
+      "riskText": "Cargo or mail loaded without accountable security status",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 6,
+      "currentControls": "Security status issued and verified in electronic/written format, status accompanies consignment and load control checks.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CMS-012",
+      "riskText": "Unconfirmed cargo or mail loaded without additional screening",
+      "probScore": 4,
+      "sevScore": 9,
+      "vulScore": 6,
+      "currentControls": "Unconfirmed cargo/mail screening requirement, exception process, supervisor approval and documentation before loading.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CMS-013",
+      "riskText": "Cargo or mail transported without security status",
+      "probScore": 4,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Security status documentation, acceptance and loading verification, audit of cargo records and reconciliation with airwaybill/manifest.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CMS-014",
+      "riskText": "Cargo/mail security status lost or not traceable through secure supply chain",
+      "probScore": 4,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Security status tracking, secure supply chain documentation, handover records and periodic compliance checks.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CMS-015",
+      "riskText": "Cargo or mail screened using unsuitable method for consignment type",
+      "probScore": 4,
+      "sevScore": 9,
+      "vulScore": 6,
+      "currentControls": "Screening method selected according to consignment nature, SOP guidance, operator training and supervisor approval for method selection.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CMS-016",
+      "riskText": "Explosive or prohibited article not detected in cargo/mail due to inappropriate screening method",
+      "probScore": 4,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Appropriate screening method, equipment capability checks, secondary screening for complex consignments and QA testing.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    }
+  ],
+  "CATERING SECURITY": [
+    {
+      "riskId": "CAT-001",
+      "riskText": "Unscreened catering loaded onto aircraft",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Catering security controls/screening, approved supplier process, catering vehicle/access control and aircraft loading verification.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CAT-002",
+      "riskText": "Prohibited article introduced onto aircraft through catering",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Catering inspection/screening, tamper checks, approved supply chain, staff screening and secure handover to aircraft.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CAT-003",
+      "riskText": "Unauthorized interference with catering before loading",
+      "probScore": 5,
+      "sevScore": 8,
+      "vulScore": 7,
+      "currentControls": "Catering protected after security controls, sealed carts/containers, access control, CCTV/patrol and seal/tamper verification at aircraft.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CAT-004",
+      "riskText": "Catering security integrity lost before loading onto aircraft",
+      "probScore": 4,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Chain of custody records, seal control, protected storage/transport and re-screening/re-inspection if integrity is compromised.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    }
+  ],
+  "EMPLOYEES SCREENING AT SECURITY": [
+    {
+      "riskId": "ESS-001",
+      "riskText": "Weapon, explosive or dangerous article introduced by staff into restricted areas",
+      "probScore": 6,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Staff screening before SRA entry, item screening, explosive detection methods where available, random/unpredictable screening and supervisor checks.",
+      "probScoreAfter": 3,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "ESS-002",
+      "riskText": "Unauthorized employee access to security restricted areas",
+      "probScore": 5,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Valid ID/access permit checks, access authorization list, electronic access controls, visitor/temporary pass controls and supervisor spot checks.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "ESS-003",
+      "riskText": "Insider threat to aviation security operations",
+      "probScore": 4,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Initial and recurrent background checks, suitability review, confidential reporting, supervisor monitoring, access limitation and security awareness training.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "ESS-004",
+      "riskText": "Unsuitable person implementing security controls",
+      "probScore": 4,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Background check completion before duty, recurrent checks, HR/security coordination, access denial process and periodic staff status review.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "ESS-005",
+      "riskText": "Explosive device introduced by staff through screening weakness",
+      "probScore": 4,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Appropriate screening methods for persons other than passengers, screening equipment checks, staff competency monitoring and unpredictable search measures.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    }
+  ],
+  "HOLD BAGGAGE SECURITY": [
+    {
+      "riskId": "HBS-001",
+      "riskText": "Unscreened originating hold baggage loaded onto aircraft",
+      "probScore": 5,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Hold baggage screening before loading, baggage make-up area controls, screening records and load authorization checks.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "HBS-002",
+      "riskText": "Prohibited article loaded onto aircraft through hold baggage",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Hold baggage screening, prohibited item detection procedure, threat resolution and baggage reconciliation before loading.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "HBS-003",
+      "riskText": "Explosive or explosive device loaded in hold baggage",
+      "probScore": 4,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Appropriate hold baggage screening methods, EDS/ETD/manual search as applicable, alarm resolution and screener competency controls.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "HBS-004",
+      "riskText": "Failure to detect explosives during hold baggage screening",
+      "probScore": 5,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Defined screening standard, certified operators, equipment testing, recurrent training and QA covert/overt testing.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "HBS-005",
+      "riskText": "Hold baggage screened below required authority standard",
+      "probScore": 4,
+      "sevScore": 9,
+      "vulScore": 6,
+      "currentControls": "Appropriate authority screening standards, SOPs, supervisor verification, equipment maintenance and QA compliance checks.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "HBS-006",
+      "riskText": "Unauthorized interference with hold baggage after screening",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Baggage protected after screening/acceptance, controlled baggage area, CCTV/patrol, seals where applicable and access restrictions.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "HBS-007",
+      "riskText": "Hold baggage security integrity lost before aircraft departure",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Chain of custody controls, baggage area access control, reconciliation, CCTV/patrol and re-screening if integrity is compromised.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "HBS-008",
+      "riskText": "Jeopardized hold baggage loaded without re-screening",
+      "probScore": 4,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Integrity breach reporting, mandatory re-screening procedure, supervisor decision log and loading hold point until clearance.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "HBS-009",
+      "riskText": "Baggage of a person not on board transported without required controls",
+      "probScore": 4,
+      "sevScore": 9,
+      "vulScore": 6,
+      "currentControls": "Passenger-baggage reconciliation, offload procedure, unaccompanied baggage identification and required screening before carriage.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "HBS-010",
+      "riskText": "Unaccompanied baggage loaded without appropriate screening",
+      "probScore": 4,
+      "sevScore": 9,
+      "vulScore": 6,
+      "currentControls": "Unaccompanied baggage screening requirement, authorization record, airline acceptance check and supervisor verification.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "HBS-011",
+      "riskText": "Unscreened transfer hold baggage loaded onto aircraft",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Transfer hold baggage screening or approved validation process, transfer route protection and loading authorization checks.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "HBS-012",
+      "riskText": "Transfer hold baggage security integrity lost before loading",
+      "probScore": 5,
+      "sevScore": 8,
+      "vulScore": 7,
+      "currentControls": "Protection from origin screening to transfer aircraft, secure transfer routing, monitoring and re-screening if integrity is compromised.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "HBS-013",
+      "riskText": "Transfer hold baggage loaded without validation of origin screening",
+      "probScore": 4,
+      "sevScore": 9,
+      "vulScore": 6,
+      "currentControls": "Origin screening validation, inter-airport/operator procedures, transfer baggage status check and records before loading.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "HBS-014",
+      "riskText": "Unidentified hold baggage accepted for carriage",
+      "probScore": 4,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Individual baggage identification, tag/status verification, passenger-baggage reconciliation and exception handling process.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "HBS-015",
+      "riskText": "Hold baggage loaded without accompanied/unaccompanied status confirmation",
+      "probScore": 4,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Baggage status confirmation, reconciliation records, airline acceptance control and supervisor loading authorization.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "HBS-016",
+      "riskText": "Hold baggage loaded without authorization for carriage on the flight",
+      "probScore": 4,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Flight-specific baggage authorization, loading manifest control, reconciliation and records confirming screening/acceptance criteria.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    }
+  ],
+  "PASSENGERS & CABIN BAGGAGE": [
+    {
+      "riskId": "PCB-001",
+      "riskText": "Unscreened passenger boards aircraft",
+      "probScore": 5,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Passenger screening before boarding, boarding pass/ID checks, sterile area control, gate reconciliation and supervisor oversight.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-002",
+      "riskText": "Unscreened cabin baggage introduced onto aircraft",
+      "probScore": 5,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Cabin baggage screening, X-ray/ETD/manual search procedures, gate control and secondary screening where required.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-003",
+      "riskText": "Prohibited article carried on board by passenger",
+      "probScore": 6,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Passenger/cabin baggage screening, prohibited item list, secondary search, supervisor resolution and confiscation/reporting process.",
+      "probScoreAfter": 3,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-004",
+      "riskText": "Explosive or explosive device carried by passenger",
+      "probScore": 4,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Appropriate screening methods for passengers, explosive detection capability where available, behaviour observation and secondary screening.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-005",
+      "riskText": "Explosive or explosive device carried in cabin baggage",
+      "probScore": 4,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Cabin baggage X-ray/EDS/ETD/manual search as applicable, image interpretation training and threat item resolution procedure.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-006",
+      "riskText": "Failure to detect explosives during passenger/cabin baggage screening",
+      "probScore": 5,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Certified screeners, appropriate screening methods, recurrent competency testing, supervisor monitoring and covert/overt QA testing.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-007",
+      "riskText": "Predictable screening method creating opportunity for security bypass",
+      "probScore": 5,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Unpredictable screening measures, random secondary checks, rotating methods/lanes and QA monitoring of screening operations.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-008",
+      "riskText": "Unscreened transfer passenger boards aircraft",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Transfer passenger screening or validation process, route/airport equivalence checks, transfer channel control and gate verification.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-009",
+      "riskText": "Unscreened transfer cabin baggage introduced onto aircraft",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Transfer cabin baggage screening or approved validation, sterile transfer route protection and gate/boarding checks.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-010",
+      "riskText": "Transfer passenger/cabin baggage security integrity lost before boarding",
+      "probScore": 5,
+      "sevScore": 8,
+      "vulScore": 7,
+      "currentControls": "Protection from origin screening to departure aircraft, sterile area separation, monitoring and re-screening if contact/mixing occurs.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-011",
+      "riskText": "Contamination of screened passenger before boarding",
+      "probScore": 5,
+      "sevScore": 8,
+      "vulScore": 7,
+      "currentControls": "Sterile area protection, separation from unscreened persons, access control to screening cleared area and re-screening after mixing/contact.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-012",
+      "riskText": "Contamination of screened cabin baggage before boarding",
+      "probScore": 5,
+      "sevScore": 8,
+      "vulScore": 7,
+      "currentControls": "Sterile area control, protection of screened baggage, monitoring at gates and re-screening procedure if integrity is compromised.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-013",
+      "riskText": "Screened passenger or cabin baggage mixed with unscreened persons/items without re-screening",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Sterile/landside separation, incident reporting, area lockdown where needed and mandatory re-screening before boarding.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-014",
+      "riskText": "Unauthorized interference with transit passenger or transit cabin baggage",
+      "probScore": 4,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Transit passenger/cabin baggage protection, transit route control, monitoring and airport transit integrity measures.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-015",
+      "riskText": "Loss of transit airport security integrity",
+      "probScore": 4,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Transit operation controls, sterile area monitoring, access restrictions and coordination between airport/security stakeholders.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-016",
+      "riskText": "Suspicious activity posing threat to civil aviation not identified or resolved",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 6,
+      "currentControls": "Suspicious activity reporting, behaviour detection practices where used, staff awareness, supervisor escalation and response procedures.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-017",
+      "riskText": "Unsafe carriage of potentially disruptive passenger",
+      "probScore": 4,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Carrier requirements for special category passengers, escort/control measures, pre-flight coordination and crew/security briefing.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-018",
+      "riskText": "Inadequate control of passenger under judicial or administrative proceedings",
+      "probScore": 4,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Documented procedures, escort arrangements, risk assessment, notification to operator/PIC and appropriate security controls.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-019",
+      "riskText": "Threat to safety and security on board aircraft from potentially disruptive passenger",
+      "probScore": 4,
+      "sevScore": 9,
+      "vulScore": 6,
+      "currentControls": "Operator security programme procedures, crew notification, escort/restraint controls where applicable and response coordination.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-020",
+      "riskText": "Uncontrolled disruptive passenger incident on board aircraft",
+      "probScore": 5,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Pre-boarding assessment, crew/security coordination, refusal/escalation process and disruptive passenger handling procedures.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-021",
+      "riskText": "Pilot-in-command not aware of potentially disruptive passenger on board",
+      "probScore": 4,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Mandatory notification process to aircraft operator and PIC, documentation checks and boarding coordination.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-022",
+      "riskText": "Required security controls not applied for potentially disruptive passenger",
+      "probScore": 4,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Special passenger handling checklist, supervisor verification, escort requirements and communication to crew/operator.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-023",
+      "riskText": "Unauthorized carriage of weapon on board aircraft",
+      "probScore": 4,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Weapon carriage authorization process, verification by competent authority, documentation check and secure handling/stowage procedure.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-024",
+      "riskText": "Weapon carried on board without required State authorization",
+      "probScore": 4,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "State authorization verification, airline acceptance controls, law-enforcement coordination and records before boarding.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-025",
+      "riskText": "Armed personnel carried on board without required State agreement",
+      "probScore": 3,
+      "sevScore": 10,
+      "vulScore": 6,
+      "currentControls": "Inter-State/operator agreement verification, approval records, confidentiality control and crew/PIC coordination as required.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-026",
+      "riskText": "Unauthorized deployment of armed personnel or in-flight security officer",
+      "probScore": 3,
+      "sevScore": 10,
+      "vulScore": 6,
+      "currentControls": "Authority approval, selection/training verification, deployment control and confidential coordination with concerned States/operator.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-027",
+      "riskText": "Accessible weapon on board aircraft during flight",
+      "probScore": 4,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Weapon unloading/secure stowage verification, inaccessible storage location and confirmation by authorized qualified person.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-028",
+      "riskText": "Loaded or improperly secured weapon carried on board aircraft",
+      "probScore": 4,
+      "sevScore": 10,
+      "vulScore": 7,
+      "currentControls": "Qualified person verification, weapon status confirmation, secure stowage and pilot/operator notification controls.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 9,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-029",
+      "riskText": "Deployment of unqualified or improperly selected in-flight security officer",
+      "probScore": 3,
+      "sevScore": 9,
+      "vulScore": 6,
+      "currentControls": "Government personnel selection, training verification, safety/security suitability check and competent authority approval.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-030",
+      "riskText": "In-flight security officer deployment not based on threat assessment",
+      "probScore": 3,
+      "sevScore": 9,
+      "vulScore": 6,
+      "currentControls": "Threat assessment requirement, authority decision record, coordination with concerned States and confidential deployment planning.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-031",
+      "riskText": "Disclosure of confidential in-flight security officer deployment information",
+      "probScore": 3,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Need-to-know communication, confidentiality controls, restricted records and briefing discipline.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "PCB-032",
+      "riskText": "Pilot-in-command not informed of armed persons and seat locations",
+      "probScore": 3,
+      "sevScore": 9,
+      "vulScore": 6,
+      "currentControls": "PIC notification procedure, seat/location records, operator coordination and pre-flight documentation checks.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    }
+  ],
+  "STORES & SUPPLIES SECURITY": [
+    {
+      "riskId": "SSS-001",
+      "riskText": "Unscreened stores or supplies loaded onto aircraft",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Stores/supplies security controls or screening, approved supplier controls, acceptance checks and loading authorization.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "SSS-002",
+      "riskText": "Prohibited article introduced onto aircraft through stores or supplies",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Stores/supplies screening, tamper checks, secure supply chain, item verification and aircraft loading controls.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "SSS-003",
+      "riskText": "Unauthorized interference with stores or supplies before loading",
+      "probScore": 5,
+      "sevScore": 8,
+      "vulScore": 7,
+      "currentControls": "Protected storage, access control, seals/tamper checks, CCTV/patrol and chain of custody before aircraft loading.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "SSS-004",
+      "riskText": "Unscreened merchandise introduced into Security Restricted Area",
+      "probScore": 5,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Merchandise security controls/screening before SRA entry, supplier approval and entry checkpoint verification.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "SSS-005",
+      "riskText": "Unscreened supplies introduced into Security Restricted Area",
+      "probScore": 5,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Supply screening/security controls, access point checks, delivery verification and random inspection.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "SSS-006",
+      "riskText": "Prohibited article introduced into Security Restricted Area through merchandise or supplies",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Screening/security controls for merchandise/supplies, approved delivery process, prohibited item guidance and supervisor checks.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    }
+  ],
+  "SURVEILLANCE & CCTV MONITORING": [
+    {
+      "riskId": "CCTV-001",
+      "riskText": "Undetected unauthorized access or interference at security critical areas",
+      "probScore": 5,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "CCTV monitoring, camera coverage checks, patrol coordination, incident reporting and supervisor review of critical area coverage.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CCTV-002",
+      "riskText": "Delayed response to acts of unlawful interference",
+      "probScore": 4,
+      "sevScore": 9,
+      "vulScore": 6,
+      "currentControls": "Control room monitoring, emergency contact procedure, escalation matrix, radio communication checks and joint response drills.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CCTV-003",
+      "riskText": "Loss of evidence for aviation security investigation",
+      "probScore": 5,
+      "sevScore": 7,
+      "vulScore": 6,
+      "currentControls": "Recording retention checks, camera health checks, backup storage, maintenance escalation and daily control room log review.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 6,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CCTV-004",
+      "riskText": "Unauthorized disclosure of sensitive security surveillance information",
+      "probScore": 4,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Restricted CCTV access, user accounts, password control, access logs, confidentiality instructions and audit review.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "CCTV-005",
+      "riskText": "Compromise of critical aviation security ICT system/data",
+      "probScore": 4,
+      "sevScore": 9,
+      "vulScore": 6,
+      "currentControls": "User access control, network separation where available, backup/retention process, system maintenance and cyber/security incident reporting.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    }
+  ],
+  "TRANSFER BAGGAGE SECURITY": [
+    {
+      "riskId": "TBS-001",
+      "riskText": "Unscreened transfer hold baggage loaded onto aircraft",
+      "probScore": 5,
+      "sevScore": 9,
+      "vulScore": 7,
+      "currentControls": "Transfer hold baggage screening or approved validation process, transfer routing control and loading authorization check.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "TBS-002",
+      "riskText": "Transfer hold baggage security integrity lost before loading",
+      "probScore": 5,
+      "sevScore": 8,
+      "vulScore": 7,
+      "currentControls": "Protected transfer baggage routing, secure make-up/storage areas, CCTV/patrol and re-screening if integrity is compromised.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "TBS-003",
+      "riskText": "Transfer hold baggage loaded without validation of origin screening",
+      "probScore": 4,
+      "sevScore": 9,
+      "vulScore": 6,
+      "currentControls": "Validation process for origin screening, inter-airport/operator procedures, transfer bag status check and records before loading.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 8,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "TBS-004",
+      "riskText": "Unidentified transfer baggage accepted for carriage",
+      "probScore": 4,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Individual baggage identification, transfer tag verification, baggage reconciliation and exception handling before loading.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    },
+    {
+      "riskId": "TBS-005",
+      "riskText": "Transfer baggage loaded without accompanied/unaccompanied status confirmation",
+      "probScore": 4,
+      "sevScore": 8,
+      "vulScore": 6,
+      "currentControls": "Accompanied/unaccompanied status check, transfer baggage reconciliation and loading supervisor authorization.",
+      "probScoreAfter": 2,
+      "sevScoreAfter": 7,
+      "vulScoreAfter": 3
+    }
+  ]
+};
+function cloneDeptRiskSeedData(){return JSON.parse(JSON.stringify(deptRiskSeedData));}
+const deptRiskTextMap = {
+  "TRN-001": "Ineffective implementation of aviation security controls",
+  "TRN-002": "Non-detection of weapons, explosives or prohibited items",
+  "TRN-003": "Incompetent personnel performing AVSEC functions",
+  "TRN-004": "Ineffective AVSEC quality control oversight",
+  "TRN-005": "Insider facilitation of unlawful interference",
+  "TRN-006": "Unauthorized disclosure of sensitive aviation security information",
+  "AC-001": "Unauthorized access to airside area",
+  "AC-002": "Unauthorized access to Security Restricted Area",
+  "AC-003": "Unauthorized person access to airside or Security Restricted Area",
+  "AC-004": "Unauthorized vehicle access to airside or Security Restricted Area",
+  "AC-005": "Access by persons without operational need or legitimate reason",
+  "AC-006": "Misuse of identification or access permit",
+  "AC-007": "Unauthorized access to aircraft",
+  "AC-008": "Unauthorized interference with aircraft",
+  "AC-009": "Introduction of prohibited articles into Security Restricted Area by staff or non-passengers",
+  "AC-010": "Introduction of explosives or explosive devices into Security Restricted Area",
+  "AC-011": "Predictable staff screening leading to security bypass",
+  "AC-012": "Introduction of weapons, explosives or prohibited articles through vehicles",
+  "AS-001": "Suspicious object, weapon, explosive or prohibited article remaining on aircraft",
+  "AS-002": "Aircraft departure without required security check/search",
+  "AS-003": "Inappropriate aircraft security check/search level selected against the risk condition",
+  "AS-004": "Item left behind by transit passenger remaining on aircraft",
+  "AS-005": "Unauthorized entry to flight crew compartment",
+  "AS-006": "Unauthorized interference with aircraft after security check/search completion",
+  "AS-007": "Contamination of secured aircraft before departure",
+  "AS-008": "Unlawful interference with aircraft parked outside Security Restricted Area",
+  "AS-009": "Unauthorized access to aircraft outside Security Restricted Area",
+  "AS-010": "Attack against aircraft using MANPADS or similar weapon",
+  "AS-011": "Ground-based weapon attack against aircraft at or near airport",
+  "CMS-001": "Unscreened cargo loaded onto aircraft",
+  "CMS-002": "Unscreened mail loaded onto aircraft",
+  "CMS-003": "Prohibited article introduced onto aircraft through cargo or mail",
+  "CMS-004": "Unsecured cargo/mail supply chain",
+  "CMS-005": "Cargo or mail accepted from unapproved regulated agent or known consignor",
+  "CMS-006": "Unauthorized interference with cargo or mail after screening/security controls",
+  "CMS-007": "Cargo/mail security integrity lost before aircraft departure",
+  "CMS-008": "High-risk cargo or mail loaded without enhanced security measures",
+  "CMS-009": "Threat associated with high-risk cargo or mail not mitigated",
+  "CMS-010": "Cargo or mail accepted without confirmation of security controls",
+  "CMS-011": "Cargo or mail loaded without accountable security status",
+  "CMS-012": "Unconfirmed cargo or mail loaded without additional screening",
+  "CMS-013": "Cargo or mail transported without security status",
+  "CMS-014": "Cargo/mail security status lost or not traceable through secure supply chain",
+  "CMS-015": "Cargo or mail screened using unsuitable method for consignment type",
+  "CMS-016": "Explosive or prohibited article not detected in cargo/mail due to inappropriate screening method",
+  "CAT-001": "Unscreened catering loaded onto aircraft",
+  "CAT-002": "Prohibited article introduced onto aircraft through catering",
+  "CAT-003": "Unauthorized interference with catering before loading",
+  "CAT-004": "Catering security integrity lost before loading onto aircraft",
+  "ESS-001": "Weapon, explosive or dangerous article introduced by staff into restricted areas",
+  "ESS-002": "Unauthorized employee access to security restricted areas",
+  "ESS-003": "Insider threat to aviation security operations",
+  "ESS-004": "Unsuitable person implementing security controls",
+  "ESS-005": "Explosive device introduced by staff through screening weakness",
+  "HBS-001": "Unscreened originating hold baggage loaded onto aircraft",
+  "HBS-002": "Prohibited article loaded onto aircraft through hold baggage",
+  "HBS-003": "Explosive or explosive device loaded in hold baggage",
+  "HBS-004": "Failure to detect explosives during hold baggage screening",
+  "HBS-005": "Hold baggage screened below required authority standard",
+  "HBS-006": "Unauthorized interference with hold baggage after screening",
+  "HBS-007": "Hold baggage security integrity lost before aircraft departure",
+  "HBS-008": "Jeopardized hold baggage loaded without re-screening",
+  "HBS-009": "Baggage of a person not on board transported without required controls",
+  "HBS-010": "Unaccompanied baggage loaded without appropriate screening",
+  "HBS-011": "Unscreened transfer hold baggage loaded onto aircraft",
+  "HBS-012": "Transfer hold baggage security integrity lost before loading",
+  "HBS-013": "Transfer hold baggage loaded without validation of origin screening",
+  "HBS-014": "Unidentified hold baggage accepted for carriage",
+  "HBS-015": "Hold baggage loaded without accompanied/unaccompanied status confirmation",
+  "HBS-016": "Hold baggage loaded without authorization for carriage on the flight",
+  "PCB-001": "Unscreened passenger boards aircraft",
+  "PCB-002": "Unscreened cabin baggage introduced onto aircraft",
+  "PCB-003": "Prohibited article carried on board by passenger",
+  "PCB-004": "Explosive or explosive device carried by passenger",
+  "PCB-005": "Explosive or explosive device carried in cabin baggage",
+  "PCB-006": "Failure to detect explosives during passenger/cabin baggage screening",
+  "PCB-007": "Predictable screening method creating opportunity for security bypass",
+  "PCB-008": "Unscreened transfer passenger boards aircraft",
+  "PCB-009": "Unscreened transfer cabin baggage introduced onto aircraft",
+  "PCB-010": "Transfer passenger/cabin baggage security integrity lost before boarding",
+  "PCB-011": "Contamination of screened passenger before boarding",
+  "PCB-012": "Contamination of screened cabin baggage before boarding",
+  "PCB-013": "Screened passenger or cabin baggage mixed with unscreened persons/items without re-screening",
+  "PCB-014": "Unauthorized interference with transit passenger or transit cabin baggage",
+  "PCB-015": "Loss of transit airport security integrity",
+  "PCB-016": "Suspicious activity posing threat to civil aviation not identified or resolved",
+  "PCB-017": "Unsafe carriage of potentially disruptive passenger",
+  "PCB-018": "Inadequate control of passenger under judicial or administrative proceedings",
+  "PCB-019": "Threat to safety and security on board aircraft from potentially disruptive passenger",
+  "PCB-020": "Uncontrolled disruptive passenger incident on board aircraft",
+  "PCB-021": "Pilot-in-command not aware of potentially disruptive passenger on board",
+  "PCB-022": "Required security controls not applied for potentially disruptive passenger",
+  "PCB-023": "Unauthorized carriage of weapon on board aircraft",
+  "PCB-024": "Weapon carried on board without required State authorization",
+  "PCB-025": "Armed personnel carried on board without required State agreement",
+  "PCB-026": "Unauthorized deployment of armed personnel or in-flight security officer",
+  "PCB-027": "Accessible weapon on board aircraft during flight",
+  "PCB-028": "Loaded or improperly secured weapon carried on board aircraft",
+  "PCB-029": "Deployment of unqualified or improperly selected in-flight security officer",
+  "PCB-030": "In-flight security officer deployment not based on threat assessment",
+  "PCB-031": "Disclosure of confidential in-flight security officer deployment information",
+  "PCB-032": "Pilot-in-command not informed of armed persons and seat locations",
+  "SSS-001": "Unscreened stores or supplies loaded onto aircraft",
+  "SSS-002": "Prohibited article introduced onto aircraft through stores or supplies",
+  "SSS-003": "Unauthorized interference with stores or supplies before loading",
+  "SSS-004": "Unscreened merchandise introduced into Security Restricted Area",
+  "SSS-005": "Unscreened supplies introduced into Security Restricted Area",
+  "SSS-006": "Prohibited article introduced into Security Restricted Area through merchandise or supplies",
+  "CCTV-001": "Undetected unauthorized access or interference at security critical areas",
+  "CCTV-002": "Delayed response to acts of unlawful interference",
+  "CCTV-003": "Loss of evidence for aviation security investigation",
+  "CCTV-004": "Unauthorized disclosure of sensitive security surveillance information",
+  "CCTV-005": "Compromise of critical aviation security ICT system/data",
+  "TBS-001": "Unscreened transfer hold baggage loaded onto aircraft",
+  "TBS-002": "Transfer hold baggage security integrity lost before loading",
+  "TBS-003": "Transfer hold baggage loaded without validation of origin screening",
+  "TBS-004": "Unidentified transfer baggage accepted for carriage",
+  "TBS-005": "Transfer baggage loaded without accompanied/unaccompanied status confirmation"
+};
+// Fill starter wording only when a stored row has no wording yet.
+// Never overwrite an admin's edited Department Risk Register text during refresh/load.
+function normalizeDeptRiskWording(){
+  if(!deptRiskData || typeof deptRiskData!=='object')return;
+  Object.values(deptRiskData).forEach(arr=>{
+    if(!Array.isArray(arr))return;
+    arr.forEach(r=>{
+      if(r && deptRiskTextMap[r.riskId] && !String(r.riskText||'').trim()){
+        r.riskText = deptRiskTextMap[r.riskId];
+      }
+    });
+  });
+}
+function isMeaningfulDeptRow(r){
+  if(!r || typeof r!=='object')return false;
+  return Boolean(String(r.riskText||'').trim() || String(r.currentControls||'').trim() || r.probScore || r.sevScore || r.vulScore || r.probScoreAfter || r.sevScoreAfter || r.vulScoreAfter);
+}
+function hasDeptRiskRecords(data){return Object.values(data||{}).some(arr=>Array.isArray(arr)&&arr.some(isMeaningfulDeptRow));}
+function isStarterDeptRow(r){return r && deptRiskTextMap[String(r.riskId||'')];}
+function ensureDeptRiskSeedIfEmpty(){
+  const seed=cloneDeptRiskSeedData();
+  if(!deptRiskData || typeof deptRiskData!=='object' || Array.isArray(deptRiskData))deptRiskData={};
+  deptRiskAreas.forEach(a=>{
+    // Seed a table only if it was never stored. An intentionally cleared [] table stays empty.
+    // Existing starter rows may have user edits, so preserve them exactly as saved in Firebase/localStorage.
+    if(!Object.prototype.hasOwnProperty.call(deptRiskData,a) || !Array.isArray(deptRiskData[a])){
+      deptRiskData[a]=Array.isArray(seed[a])?seed[a]:[];
+    }
+  });
+  normalizeDeptRiskWording();
+  Object.values(deptRiskData).forEach(arr=>(arr||[]).forEach(calcDeptRiskRow));
+}
+
+const DEPT_FIREBASE_COLLECTION='avsecDepartmentRiskRegisterYearWise';
+let deptRiskData={};
+let currentDeptArea=deptRiskAreas[0];
+let deptAutoSaveTimer=null;
+let lastDeptCloudSaveHash='';
+
+let qaData=[];
+let regData=[];
+let autoSaveTimer=null;
+let isLoadingCloud=false;
+let lastCloudSaveHash='';
+let backupRows=[];
+let lastBackupHash='';
+let backupQueue=Promise.resolve();
+let currentMode=localStorage.getItem('avsecMode')||'';
+let currentYear=localStorage.getItem('avsecYear')||'';
+function yearKey(type){return type+'Data_'+currentYear;}
+function deptYearKey(){return 'deptRiskData_'+currentYear;}
+function safeId(v){return String(v||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');}
+function isAdmin(){return currentMode==='admin';}
+
+function setSyncStatus(msg,type='info'){
+  const el=document.getElementById('syncStatus');
+  if(!el)return;
+  el.textContent='Firebase: '+msg;
+  el.classList.remove('hidden');
+  el.style.background=type==='error'?'#f8d7da':(type==='ok'?'#d1e7dd':'#e8f1ff');
+  el.style.color=type==='error'?'#842029':(type==='ok'?'#0f5132':'#0b3d91');
+}
+function cloudHash(){return JSON.stringify({year:currentYear,qa:qaData,reg:regData});}
+function scheduleAutoCloudSave(reason='change'){
+  if(!currentYear || !isAdmin() || isLoadingCloud)return;
+  saveAll(false);
+  const hash=cloudHash();
+  if(hash===lastCloudSaveHash)return;
+  setSyncStatus('Auto saving...','info');
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer=setTimeout(()=>performAutoCloudSave(reason),1200);
+}
+async function performAutoCloudSave(reason='auto'){
+  if(!currentYear || !isAdmin() || isLoadingCloud)return;
+  const hash=cloudHash();
+  if(hash===lastCloudSaveHash){setSyncStatus('Saved','ok');return;}
+  try{
+    qaData.forEach(calcRow);
+    await db.collection(FIREBASE_COLLECTION).doc(String(currentYear)).set({
+      year:currentYear,
+      qa:qaData,
+      reg:regData,
+      savedAt:new Date().toISOString(),
+      updatedBy:currentMode,
+      saveMode:'auto',
+      saveReason:reason
+    },{merge:false});
+    lastCloudSaveHash=cloudHash();
+    await queueFullSiteBackup(reason);
+    setSyncStatus('Auto saved + backed up','ok');
+  }catch(err){
+    console.error('Firebase auto-save error:',err);
+    setSyncStatus('Auto save failed','error');
+  }
+}
+function fillYearSelect(){const sel=document.getElementById('yearSelect'); if(!sel)return; sel.innerHTML=''; for(let y=2025;y<=2100;y++){const opt=document.createElement('option'); opt.value=y; opt.textContent=y; if(String(currentYear||new Date().getFullYear())===String(y))opt.selected=true; sel.appendChild(opt);}}
+function adminLogin(){const u=document.getElementById('loginUser').value.trim();const p=document.getElementById('loginPass').value;if(u==='QAUNIT'&&p==='Airbus@24'){setMode('admin')}else{document.getElementById('loginError').textContent='Invalid admin username or password.'}}
+function viewerLogin(){setMode('viewer')}
+function setMode(m){currentMode=m;localStorage.setItem('avsecMode',m);document.getElementById('loginScreen').style.display='none';fillYearSelect();document.getElementById('yearScreen').style.display='flex';}
+async function enterYear(){
+  currentYear=document.getElementById('yearSelect').value;
+  localStorage.setItem('avsecYear',currentYear);
+  loadLocalYear();
+  unlockApp();
+  await loadCloud(true);
+   await loadDeptRiskCloud(true);
+}
+function backToLogin(){document.getElementById('yearScreen').style.display='none';document.getElementById('loginScreen').style.display='flex';}
+function unlockApp(){document.body.classList.remove('app-locked','viewer-mode','admin-mode');document.body.classList.add(currentMode==='viewer'?'viewer-mode':'admin-mode');document.getElementById('yearScreen').style.display='none';document.getElementById('loginScreen').style.display='none';document.getElementById('modeLabel').textContent=(currentMode==='admin'?'Admin Mode':'Viewer Mode');document.getElementById('yearLabel').textContent='Year: '+currentYear;document.getElementById('yearLabel').classList.remove('hidden');document.getElementById('viewerNoteQA')?.classList.toggle('hidden',currentMode!=='viewer');document.getElementById('viewerNoteReg')?.classList.toggle('hidden',currentMode!=='viewer');document.getElementById('viewerNoteDept')?.classList.toggle('hidden',currentMode!=='viewer');renderQA();renderReg();renderDeptRiskTabs();renderDeptRisk();}
+function loadLocalYear(){qaData=JSON.parse(localStorage.getItem(yearKey('qa'))||'[]');regData=JSON.parse(localStorage.getItem(yearKey('reg'))||'[]');deptRiskData=JSON.parse(localStorage.getItem(deptYearKey())||'{}');ensureDeptRiskSeedIfEmpty();saveDeptRiskLocal();if(!qaData.length)addQARow(false);}
+function logoutApp(){localStorage.removeItem('avsecMode');currentMode='';currentYear='';qaData=[];regData=[];deptRiskData={};document.body.className='app-locked';document.getElementById('loginScreen').style.display='flex';document.getElementById('yearScreen').style.display='none';document.getElementById('modeLabel').textContent='Not logged in';document.getElementById('yearLabel').classList.add('hidden');document.getElementById('syncStatus')?.classList.add('hidden');clearTimeout(autoSaveTimer);clearTimeout(deptAutoSaveTimer);backupRows=[];lastBackupHash='';document.getElementById('loginPass').value='';}
+function guardAdmin(){if(!isAdmin()){alert('Viewer mode is read-only. Please login as Admin to edit.');return false;}return true;}
+function guardYear(){if(!currentYear){alert('Please select assessment year first.');return false;}return true;}
+function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));document.getElementById('tab-'+id)?.classList.add('active');if(id==='backup')loadFullSiteBackups(true);}
+function getHomeRiskRating(total){
+  if(total>=25.6)return {label:'HIGH',cls:'level-high'};
+  if(total>=19.6)return {label:'MEDIUM-HIGH',cls:'level-medium-high'};
+  if(total>=13.6)return {label:'MEDIUM',cls:'level-medium'};
+  if(total>=7.6)return {label:'MEDIUM-LOW',cls:'level-medium-low'};
+  return {label:'LOW',cls:'level-low'};
+}
+function updateHomeRiskCalculator(){
+  const threat=Number(document.getElementById('homeRiskThreat')?.value);
+  const consequence=Number(document.getElementById('homeRiskConsequence')?.value);
+  const vulnerability=Number(document.getElementById('homeRiskVulnerability')?.value);
+  const totalCell=document.getElementById('homeRiskTotal');
+  const ratingCell=document.getElementById('homeRiskRating');
+  if(!totalCell||!ratingCell)return;
+  const classes=['level-high','level-medium-high','level-medium','level-medium-low','level-low'];
+  totalCell.classList.remove(...classes);
+  ratingCell.classList.remove(...classes);
+  if(!threat||!consequence||!vulnerability){
+    totalCell.textContent='-';
+    ratingCell.textContent='-';
+    return;
+  }
+  const total=threat+consequence+vulnerability;
+  const rating=getHomeRiskRating(total);
+  totalCell.textContent=String(total);
+  ratingCell.textContent=rating.label;
+  totalCell.classList.add(rating.cls);
+  ratingCell.classList.add(rating.cls);
+}
+
+function init(){fillYearSelect();document.getElementById('qaHead').innerHTML=qaCols.map(c=>`<th>${c[1]}</th>`).join('');document.getElementById('regHead').innerHTML=regCols.map(c=>`<th>${c[1]}</th>`).join('');document.getElementById('deptRiskHead').innerHTML=deptRiskCols.map(c=>`<th class="${['riskText','currentControls'].includes(c[0])?'wide':''}">${c[1]}</th>`).join('');renderDeptRiskTabs();renderDeptRisk(); if(currentMode){setTimeout(()=>setMode(currentMode),0);}else{renderDashboard();}}
+function ratingFromScore(s){s=Number(s); if(s<=2)return ratingOptions[0]; if(s<=4)return ratingOptions[1]; if(s<=6)return ratingOptions[2]; if(s<=8)return ratingOptions[3]; return ratingOptions[4];}
+function riskFromScore(s){s=Number(s)||0; if(!s)return ''; if(s<=7.5)return 'Low'; if(s<=13.5)return 'Medium Low'; if(s<=19.5)return 'Medium'; if(s<=25.5)return 'Medium High'; return 'High';}
+function riskClass(v){return 'risk-'+String(v||'').toLowerCase().replaceAll(' ','-');}
+function renderDashboard(){
+  const box=document.getElementById('scopeDashboard');
+  if(!box)return;
+  const counts={};
+  scopes.forEach(s=>counts[s]=0);
+  qaData.forEach(r=>{if(r.scopeArea)counts[r.scopeArea]=(counts[r.scopeArea]||0)+1;});
+  const max=Math.max(1,...Object.values(counts));
+  box.innerHTML=Object.entries(counts).map(([area,count])=>`<div class="dash-card"><h4>${area}</h4><div class="dash-count">${count}</div><div class="small">Risk record(s)</div><div class="bar"><span style="width:${(count/max)*100}%"></span></div></div>`).join('');
+}
+function addQARow(render=true){if(render && (!guardYear() || !guardAdmin()))return;qaData.push({riskId:'R-'+String(Date.now()).slice(-6),date:new Date().toISOString().slice(0,10)}); if(render){renderQA();scheduleAutoCloudSave('add row');}}
+function esc(v){return String(v??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+function viewDiv(value,long=false){return `<div class="view-cell ${long?'long-view':''}" title="${esc(value)}">${esc(value)}</div>`;}
+function renderQA(){const tb=document.querySelector('#qaTable tbody');tb.innerHTML='';qaData.forEach((r,i)=>{calcRow(r);let tr=document.createElement('tr');tr.id='qa-row-'+i;qaCols.forEach(c=>{let td=document.createElement('td');if(c[0]=='actions'){td.innerHTML=isAdmin()?`<button class="btn green admin-action" onclick="sendToRegister(${i})">Send</button> <button class="btn red admin-action" onclick="deleteQARow(${i})">Delete</button>`:'<span class="small">View only</span>'}
+else if(!isAdmin()){ if(c[2]=='readonly'){td.className=riskClass(c[0]=='riskScore'?r.risk:r.riskAfter);td.innerHTML=`<b>${esc(r[c[0]]||'')}</b>`}else if(c[2]=='readonlyRating'){td.className=riskClass((r[c[0]]||'').split(' - ')[0]);td.innerHTML=`<b>${esc(r[c[0]]||'')}</b>`}else if(c[2]=='readonlyRisk'){td.className=riskClass(r[c[0]]);td.innerHTML=`<b>${esc(r[c[0]]||'')}</b>`}else{td.innerHTML=viewDiv(r[c[0]]||'', ['identifyRisk','existingControl','immediateAction','correctiveAction'].includes(c[0]));}}
+else if(c[2]=='select'){td.innerHTML=`<select onchange="updateQAAndRender(${i},'${c[0]}',this.value)">${['',...c[3]].map(o=>`<option ${String(r[c[0]]||'')==String(o)?'selected':''}>${o}</option>`).join('')}</select>`}else if(c[2]=='date'){td.innerHTML=`<input type="date" value="${r[c[0]]||''}" onchange="updateQA(${i},'${c[0]}',this.value)">`}else if(c[2]=='textarea'){td.innerHTML=`<textarea oninput="autoGrow(this);updateQA(${i},'${c[0]}',this.value)">${esc(r[c[0]]||'')}</textarea>`}else if(c[2]=='readonly'){td.className=riskClass(c[0]=='riskScore'?r.risk:r.riskAfter);td.innerHTML=`<b>${esc(r[c[0]]||'')}</b>`}else if(c[2]=='readonlyRating'){td.className=riskClass((r[c[0]]||'').split(' - ')[0]);td.innerHTML=`<b>${esc(r[c[0]]||'')}</b>`}else if(c[2]=='readonlyRisk'){td.className=riskClass(r[c[0]]);td.innerHTML=`<b>${esc(r[c[0]]||'')}</b>`}else{td.innerHTML=`<input value="${esc(r[c[0]]||'')}" oninput="updateQA(${i},'${c[0]}',this.value)">`}tr.appendChild(td)});tb.appendChild(tr)});document.querySelectorAll('textarea').forEach(autoGrow);renderDashboard();saveAll(false)}
+function calcRow(r){['probScore','sevScore','vulScore','probScoreAfter','sevScoreAfter','vulScoreAfter'].forEach(k=>{if(r[k])r[k]=Number(r[k])}); if(r.probScore)r.probability=ratingFromScore(r.probScore); if(r.sevScore)r.severity=ratingFromScore(r.sevScore); if(r.vulScore)r.vulnerability=ratingFromScore(r.vulScore); r.riskScore=(Number(r.probScore)||0)+(Number(r.sevScore)||0)+(Number(r.vulScore)||0)||''; if(r.riskScore)r.risk=riskFromScore(r.riskScore); if(r.probScoreAfter)r.probAfter=ratingFromScore(r.probScoreAfter); if(r.sevScoreAfter)r.sevAfter=ratingFromScore(r.sevScoreAfter); if(r.vulScoreAfter)r.vulAfter=ratingFromScore(r.vulScoreAfter); r.riskScoreAfter=(Number(r.probScoreAfter)||0)+(Number(r.sevScoreAfter)||0)+(Number(r.vulScoreAfter)||0)||''; if(r.riskScoreAfter)r.riskAfter=riskFromScore(r.riskScoreAfter);}
+function updateQA(i,k,v){if(!guardAdmin())return;
+  qaData[i][k]=v;
+  calcRow(qaData[i]);
+  saveAll(false);
+  renderDashboard();
+  scheduleAutoCloudSave('edit QA');
+}
+function updateQAAndRender(i,k,v){if(!guardAdmin())return;
+  qaData[i][k]=v;
+  calcRow(qaData[i]);
+  renderQA();
+  scheduleAutoCloudSave('edit QA');
+}
+function deleteQARow(i){if(!guardAdmin())return;if(confirm('Delete this row?')){qaData.splice(i,1);renderQA();scheduleAutoCloudSave('delete QA row');}}
+function sendToRegister(i){if(!guardAdmin())return;let r=qaData[i];calcRow(r);let item={year:currentYear,regRowId:'REG-'+Date.now()+'-'+i,riskId:r.riskId,sourceReference:r.activityReference,identifyRisk:r.identifyRisk,area:r.scopeArea,tolerability:r.riskAfter,reviewAction:r.correctiveAction,probability:r.probAfter||r.probability,severity:r.sevAfter||r.severity,residualRisk:r.riskAfter,sourceIndex:i};regData.push(item);saveAll(false);renderReg();scheduleAutoCloudSave('send to register');showPage('register');setTimeout(()=>{let row=document.getElementById(item.regRowId);if(row){row.scrollIntoView({behavior:'smooth',block:'center'});row.classList.add('highlight');}},200)}
+function renderReg(){const tb=document.querySelector('#regTable tbody');tb.innerHTML='';regData.forEach((r,i)=>{let tr=document.createElement('tr');tr.id=r.regRowId||('reg-'+i+'-'+r.riskId);regCols.forEach(c=>{let td=document.createElement('td');if(c[0]=='actions'){td.innerHTML=`<button class="btn primary" onclick="goSource(${r.sourceIndex})">Go Source</button> ${isAdmin()?`<button class="btn red admin-action" onclick="deleteReg(${i})">Delete</button>`:''}`}else if(c[0]=='riskId'){td.innerHTML=`<a href="#" onclick="goSource(${r.sourceIndex});return false"><b>${esc(r.riskId||'')}</b></a>`}
+else if(!isAdmin()){ if(c[0]=='residualRisk')td.className=riskClass(r[c[0]]); td.innerHTML=viewDiv(r[c[0]]||'', ['identifyRisk','reviewAction'].includes(c[0]));}
+else if(['reviewAction','probability','severity','residualRisk'].includes(c[0])){td.innerHTML=`<textarea oninput="autoGrow(this);updateReg(${i},'${c[0]}',this.value)">${esc(r[c[0]]||'')}</textarea>`; if(c[0]=='residualRisk')td.className=riskClass(r[c[0]])}else{td.textContent=r[c[0]]||''}tr.appendChild(td)});tb.appendChild(tr)});document.querySelectorAll('textarea').forEach(autoGrow);saveAll(false)}
+function goSource(i){showPage('qa');setTimeout(()=>{let row=document.getElementById('qa-row-'+i);if(row){row.scrollIntoView({behavior:'smooth',block:'center'});row.classList.add('highlight');setTimeout(()=>row.classList.remove('highlight'),2500)}},150)}
+function updateReg(i,k,v){if(!guardAdmin())return;regData[i][k]=v;saveAll(false);scheduleAutoCloudSave('edit register')}function deleteReg(i){if(!guardAdmin())return;regData.splice(i,1);renderReg();scheduleAutoCloudSave('delete register row')}
+function saveAll(alertIt=true){if(!currentYear)return;localStorage.setItem(yearKey('qa'),JSON.stringify(qaData));localStorage.setItem(yearKey('reg'),JSON.stringify(regData));localStorage.setItem(deptYearKey(),JSON.stringify(deptRiskData));if(alertIt)alert('Saved successfully in browser storage for year '+currentYear+'.');}
+async function saveCloud(){if(!guardYear() || !guardAdmin())return;
+  qaData.forEach(calcRow);
+  saveAll(false);
+  const payload={year:currentYear,qa:qaData,reg:regData,savedAt:new Date().toISOString(),updatedBy:currentMode};
+  try{
+    await db.collection(FIREBASE_COLLECTION).doc(String(currentYear)).set(payload,{merge:false});
+    lastCloudSaveHash=cloudHash();
+    await queueFullSiteBackup('Manual QA / Risk Register save');
+    setSyncStatus('Saved + backed up','ok');
+    alert('Saved '+currentYear+' data to Firebase successfully. Full-site backup updated.');
+  }catch(err){
+    console.error('Firebase save error:',err);
+    alert('Could not save to Firebase. Check internet connection, Firebase Firestore enabled, and Firestore security rules.');
+  }
+}
+async function loadCloud(silent=false){
+  if(!guardYear())return;
+  isLoadingCloud=true;
+  setSyncStatus('Loading...','info');
+  try{
+    const snap=await db.collection(FIREBASE_COLLECTION).doc(String(currentYear)).get();
+    if(!snap.exists){
+      qaData=[];regData=[];deptRiskData={};addQARow(false);saveAll(false);renderQA();renderReg();
+      lastCloudSaveHash=cloudHash();
+      setSyncStatus('No cloud data','info');
+      if(!silent) alert('No Firebase data found for '+currentYear+'. New blank record loaded.');
+      return;
+    }
+    const data=snap.data()||{};
+    qaData=Array.isArray(data.qa)?data.qa:[];
+    regData=Array.isArray(data.reg)?data.reg:[];
+    if(!qaData.length)addQARow(false);
+    saveAll(false);renderQA();renderReg();
+    lastCloudSaveHash=cloudHash();
+    setSyncStatus('Loaded','ok');
+    if(!silent) alert('Loaded '+currentYear+' data from Firebase.');
+  }catch(err){
+    console.error('Firebase load error:',err);
+    setSyncStatus('Load failed','error');
+    if(!silent) alert('Could not load from Firebase. Check internet connection, Firebase Firestore enabled, and Firestore security rules.');
+  }finally{
+    isLoadingCloud=false;
+  }
+}
+
+// Full-site Firebase snapshot backup: latest 20 per assessment year.
+function deepClone(v){return JSON.parse(JSON.stringify(v??null));}
+function countDeptRiskRecords(data=deptRiskData){return Object.values(data||{}).reduce((n,arr)=>n+(Array.isArray(arr)?arr.length:0),0);}
+function fullSiteHash(){return JSON.stringify({year:String(currentYear||''),qa:qaData,reg:regData,deptRiskData});}
+function backupItemsRef(){return db.collection(BACKUP_FIREBASE_COLLECTION).doc(String(currentYear)).collection('items');}
+function setBackupStatus(msg,type='info'){
+  const el=document.getElementById('backupStatus');if(!el)return;
+  el.textContent=msg;
+  el.style.background=type==='error'?'#f8d7da':(type==='ok'?'#d1e7dd':'#e8f1ff');
+  el.style.color=type==='error'?'#842029':(type==='ok'?'#0f5132':'#0b3d91');
+}
+function formatBackupTime(v){if(!v)return '-';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString();}
+function renderBackupList(){
+  const body=document.getElementById('backupTableBody');if(!body)return;
+  document.getElementById('backupSelectedYear').textContent=currentYear||'-';
+  document.getElementById('backupAvailableCount').textContent=backupRows.length+' / '+BACKUP_LIMIT;
+  document.getElementById('backupLatestTime').textContent=backupRows.length?formatBackupTime(backupRows[0].savedAt):'No backups yet';
+  if(!backupRows.length){body.innerHTML='<tr><td colspan="8" class="backup-empty">No backups available for '+esc(currentYear||'this year')+'. A backup will appear after the next successful Firebase change.</td></tr>';return;}
+  body.innerHTML=backupRows.map((b,i)=>`<tr><td>${i+1}</td><td>${esc(formatBackupTime(b.savedAt))}</td><td class="backup-reason">${esc(b.reason||'Change saved')}</td><td>${Number(b.summary?.qaRecords??(b.qa||[]).length)}</td><td>${Number(b.summary?.regRecords??(b.reg||[]).length)}</td><td>${Number(b.summary?.deptRecords??countDeptRiskRecords(b.deptRiskData||{}))}</td><td>${esc(b.updatedBy||'-')}</td><td>${isAdmin()?`<button class="btn orange admin-action" onclick="restoreFullSiteBackup('${esc(b.id)}')">Restore</button>`:'<span class="small">Admin restore only</span>'}</td></tr>`).join('');
+}
+async function loadFullSiteBackups(silent=false){
+  if(!currentYear){backupRows=[];renderBackupList();setBackupStatus('Select a year to load backups','info');return;}
+  setBackupStatus('Loading backups...','info');
+  try{
+    const snap=await backupItemsRef().orderBy('savedAt','desc').limit(BACKUP_LIMIT).get();
+    backupRows=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderBackupList();setBackupStatus('Latest '+backupRows.length+' backup(s) loaded','ok');
+  }catch(err){console.error('Backup list load error:',err);backupRows=[];renderBackupList();setBackupStatus('Could not load backups','error');if(!silent)alert('Could not load Firebase backups. Check Firestore rules and internet connection.');}
+}
+async function pruneFullSiteBackups(){
+  const snap=await backupItemsRef().orderBy('savedAt','desc').get();
+  const oldDocs=snap.docs.slice(BACKUP_LIMIT);if(!oldDocs.length)return;
+  const batch=db.batch();oldDocs.forEach(d=>batch.delete(d.ref));await batch.commit();
+}
+async function createFullSiteBackupNow(reason='Change saved',force=false){
+  if(!currentYear || !isAdmin() || isLoadingCloud)return false;
+  qaData.forEach(calcRow);Object.values(deptRiskData||{}).forEach(arr=>(arr||[]).forEach(calcDeptRiskRow));
+  const hash=fullSiteHash();if(!force && hash===lastBackupHash)return false;
+  const savedAt=new Date().toISOString();
+  const payload={year:String(currentYear),savedAt,reason:String(reason||'Change saved'),updatedBy:currentMode,qa:deepClone(qaData),reg:deepClone(regData),deptRiskData:deepClone(deptRiskData),summary:{qaRecords:qaData.length,regRecords:regData.length,deptRecords:countDeptRiskRecords()}};
+  const id=savedAt.replace(/[^0-9]/g,'').slice(0,17)+'-'+Math.random().toString(36).slice(2,8);
+  await backupItemsRef().doc(id).set(payload,{merge:false});
+  lastBackupHash=hash;await pruneFullSiteBackups();
+  if(document.getElementById('backup')?.classList.contains('active'))await loadFullSiteBackups(true);
+  return true;
+}
+function queueFullSiteBackup(reason='Change saved',force=false){
+  backupQueue=backupQueue.then(()=>createFullSiteBackupNow(reason,force)).catch(err=>{console.error('Full-site backup error:',err);setBackupStatus('Backup failed','error');return false;});
+  return backupQueue;
+}
+async function restoreFullSiteBackup(id){
+  if(!guardYear() || !guardAdmin())return;
+  if(!confirm('Restore this full-site backup for '+currentYear+'? The current site data will first be saved as a safety backup.'))return;
+  setBackupStatus('Restoring backup...','info');setSyncStatus('Restoring backup...','info');
+  try{
+    const snap=await backupItemsRef().doc(String(id)).get();if(!snap.exists)throw new Error('Selected backup not found.');
+    const data=snap.data()||{};
+    await queueFullSiteBackup('Safety backup before restore',true);
+    qaData=Array.isArray(data.qa)?deepClone(data.qa):[];
+    regData=Array.isArray(data.reg)?deepClone(data.reg):[];
+    deptRiskData=(data.deptRiskData&&typeof data.deptRiskData==='object')?deepClone(data.deptRiskData):{};
+    ensureDeptRiskSeedIfEmpty();if(!qaData.length)addQARow(false);
+    const restoredAt=new Date().toISOString();
+    await db.collection(FIREBASE_COLLECTION).doc(String(currentYear)).set({year:currentYear,qa:qaData,reg:regData,savedAt:restoredAt,updatedBy:currentMode,saveMode:'restore',restoreSource:String(id)},{merge:false});
+    await db.collection(DEPT_FIREBASE_COLLECTION).doc(String(currentYear)).set({year:currentYear,deptRiskData,savedAt:restoredAt,updatedBy:currentMode,saveMode:'restore',restoreSource:String(id)},{merge:false});
+    saveAll(false);saveDeptRiskLocal();renderQA();renderReg();renderDeptRiskTabs();renderDeptRisk();
+    lastCloudSaveHash=cloudHash();lastDeptCloudSaveHash=deptCloudHash();lastBackupHash='';
+    await queueFullSiteBackup('Restored backup '+String(id),true);
+    await loadFullSiteBackups(true);setSyncStatus('Backup restored','ok');setBackupStatus('Backup restored successfully','ok');
+    alert('Full-site backup restored successfully for '+currentYear+'.');
+  }catch(err){console.error('Backup restore error:',err);setSyncStatus('Backup restore failed','error');setBackupStatus('Restore failed','error');alert('Could not restore the selected backup.');}
+}
+
+function clearQA(){if(!guardYear() || !guardAdmin())return;if(confirm('Clear all QA data?')){qaData=[];addQARow(false);renderQA();scheduleAutoCloudSave('clear QA');}}function clearRegister(){if(!guardYear() || !guardAdmin())return;if(confirm('Clear Risk Register?')){regData=[];renderReg();scheduleAutoCloudSave('clear register');}}
+function autoGrow(el){el.style.height='auto';el.style.height=(el.scrollHeight+4)+'px'}
+function exportExcel(type){if(!guardYear())return;let data,cols,name;if(type=='qa'){data=qaData.map(r=>{calcRow(r);let o={};qaCols.filter(c=>c[0]!='actions').forEach(c=>o[c[1]]=r[c[0]]||'');return o});name='QA_Risk_Assessment_'+(currentYear||'')+'.xlsx'}else{data=regData.map(r=>{let o={};regCols.filter(c=>c[0]!='actions').forEach(c=>o[c[1]]=r[c[0]]||'');return o});name='Risk_Register_'+(currentYear||'')+'.xlsx'}let ws=XLSX.utils.json_to_sheet(data);let wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,type=='qa'?'QA Risk Assessment':'Risk Register');XLSX.writeFile(wb,name)}
+function downloadTemplate(){if(!guardYear())return;let obj={};qaCols.filter(c=>c[0]!='actions').forEach(c=>obj[c[1]]='');let ws=XLSX.utils.json_to_sheet([obj]);let wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Import Template');XLSX.writeFile(wb,'AVSEC_QA_Import_Template.xlsx')}
+function importExcel(e){if(!guardYear() || !guardAdmin())return;let f=e.target.files[0];if(!f)return;let reader=new FileReader();reader.onload=ev=>{let wb=XLSX.read(ev.target.result,{type:'binary'});let ws=wb.Sheets[wb.SheetNames[0]];let rows=XLSX.utils.sheet_to_json(ws);rows.forEach(row=>{let o={};qaCols.filter(c=>c[0]!='actions').forEach(c=>{o[c[0]]=row[c[1]]||''});qaData.push(o)});renderQA();scheduleAutoCloudSave('import Excel');alert('Imported successfully.');};reader.readAsBinaryString(f);}
+
+function deptCloudHash(){return JSON.stringify({year:currentYear,deptRiskData});}
+function scheduleDeptAutoCloudSave(reason='dept change'){
+  if(!currentYear || !isAdmin() || isLoadingCloud)return;
+  saveDeptRiskLocal();
+  const hash=deptCloudHash();
+  if(hash===lastDeptCloudSaveHash)return;
+  setSyncStatus('Department auto saving...','info');
+  clearTimeout(deptAutoSaveTimer);
+  deptAutoSaveTimer=setTimeout(()=>performDeptAutoCloudSave(reason),1200);
+}
+async function performDeptAutoCloudSave(reason='auto'){
+  if(!currentYear || !isAdmin() || isLoadingCloud)return;
+  try{
+    Object.values(deptRiskData).forEach(arr=>(arr||[]).forEach(calcDeptRiskRow));
+    await db.collection(DEPT_FIREBASE_COLLECTION).doc(String(currentYear)).set({year:currentYear,deptRiskData,savedAt:new Date().toISOString(),updatedBy:currentMode,saveMode:'auto',saveReason:reason},{merge:false});
+    lastDeptCloudSaveHash=deptCloudHash();
+    await queueFullSiteBackup(reason);
+    setSyncStatus('Department auto saved + backed up','ok');
+  }catch(err){console.error('Department Firebase auto-save error:',err);setSyncStatus('Department auto save failed','error');}
+}
+function saveDeptRiskLocal(){if(!currentYear)return;localStorage.setItem(deptYearKey(),JSON.stringify(deptRiskData));}
+function renderDeptRiskTabs(){
+  const box=document.getElementById('deptAreaTabs'); if(!box)return;
+  box.innerHTML=deptRiskAreas.map(a=>`<button class="area-tab ${a===currentDeptArea?'active':''}" onclick="selectDeptArea('${esc(a)}')">${esc(a)}</button>`).join('');
+}
+function selectDeptArea(area){currentDeptArea=area;renderDeptRiskTabs();renderDeptRisk();}
+function calcDeptRiskRow(r){
+  ['probScore','sevScore','vulScore','probScoreAfter','sevScoreAfter','vulScoreAfter'].forEach(k=>{if(r[k])r[k]=Number(r[k]);});
+  if(r.probScore)r.probability=ratingFromScore(r.probScore); if(r.sevScore)r.severity=ratingFromScore(r.sevScore); if(r.vulScore)r.vulnerability=ratingFromScore(r.vulScore);
+  r.riskScore=(Number(r.probScore)||0)+(Number(r.sevScore)||0)+(Number(r.vulScore)||0)||''; if(r.riskScore)r.risk=riskFromScore(r.riskScore);
+  if(r.probScoreAfter)r.probAfter=ratingFromScore(r.probScoreAfter); if(r.sevScoreAfter)r.sevAfter=ratingFromScore(r.sevScoreAfter); if(r.vulScoreAfter)r.vulAfter=ratingFromScore(r.vulScoreAfter);
+  r.riskScoreAfter=(Number(r.probScoreAfter)||0)+(Number(r.sevScoreAfter)||0)+(Number(r.vulScoreAfter)||0)||''; if(r.riskScoreAfter)r.riskAfter=riskFromScore(r.riskScoreAfter);
+}
+function renderDeptRisk(){
+  const tb=document.querySelector('#deptRiskTable tbody'); if(!tb)return;
+  if(!Array.isArray(deptRiskData[currentDeptArea]))deptRiskData[currentDeptArea]=[];
+  document.getElementById('deptCurrentAreaTitle').textContent=currentDeptArea;
+  document.getElementById('deptCurrentCount').textContent=deptRiskData[currentDeptArea].length+' record(s)';
+  document.getElementById('deptPrintTitle').textContent='Department Risk Register - '+currentDeptArea+' - '+(currentYear||'');
+  tb.innerHTML='';
+  deptRiskData[currentDeptArea].forEach((r,i)=>{
+    calcDeptRiskRow(r);
+    let tr=document.createElement('tr');
+    deptRiskCols.forEach(c=>{
+      let td=document.createElement('td');
+      if(c[0]==='actions')td.innerHTML=isAdmin()?`<button class="btn red admin-action" onclick="deleteDeptRiskRow(${i})">Delete</button>`:'<span class="small">View only</span>';
+      else if(!isAdmin()){
+        if(c[2]==='readonly'){td.className=riskClass(c[0]==='riskScore'?r.risk:r.riskAfter);td.innerHTML=`<b>${esc(r[c[0]]||'')}</b>`;}
+        else if(c[2]==='readonlyRating'){td.className=riskClass((r[c[0]]||'').split(' - ')[0]);td.innerHTML=`<b>${esc(r[c[0]]||'')}</b>`;}
+        else if(c[2]==='readonlyRisk'){td.className=riskClass(r[c[0]]);td.innerHTML=`<b>${esc(r[c[0]]||'')}</b>`;}
+        else td.innerHTML=viewDiv(r[c[0]]||'', ['riskText','currentControls'].includes(c[0]));
+      }else if(c[2]==='select')td.innerHTML=`<select onchange="updateDeptRiskAndRender(${i},'${c[0]}',this.value)">${['',...c[3]].map(o=>`<option ${String(r[c[0]]||'')==String(o)?'selected':''}>${o}</option>`).join('')}</select>`;
+      else if(c[2]==='textarea')td.innerHTML=`<textarea oninput="autoGrow(this);updateDeptRisk(${i},'${c[0]}',this.value)">${esc(r[c[0]]||'')}</textarea>`;
+      else if(c[2]==='readonly'){td.className=riskClass(c[0]==='riskScore'?r.risk:r.riskAfter);td.innerHTML=`<b>${esc(r[c[0]]||'')}</b>`;}
+      else if(c[2]==='readonlyRating'){td.className=riskClass((r[c[0]]||'').split(' - ')[0]);td.innerHTML=`<b>${esc(r[c[0]]||'')}</b>`;}
+      else if(c[2]==='readonlyRisk'){td.className=riskClass(r[c[0]]);td.innerHTML=`<b>${esc(r[c[0]]||'')}</b>`;}
+      else td.innerHTML=`<input value="${esc(r[c[0]]||'')}" oninput="updateDeptRisk(${i},'${c[0]}',this.value)">`;
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+  document.querySelectorAll('textarea').forEach(autoGrow);
+  saveDeptRiskLocal();
+}
+function addDeptRiskRow(){if(!guardYear() || !guardAdmin())return;if(!Array.isArray(deptRiskData[currentDeptArea]))deptRiskData[currentDeptArea]=[];deptRiskData[currentDeptArea].push({riskId:'DR-'+safeId(currentDeptArea).slice(0,3).toUpperCase()+'-'+String(Date.now()).slice(-6)});renderDeptRisk();scheduleDeptAutoCloudSave('add department row');}
+function updateDeptRisk(i,k,v){if(!guardAdmin())return;deptRiskData[currentDeptArea][i][k]=v;calcDeptRiskRow(deptRiskData[currentDeptArea][i]);saveDeptRiskLocal();scheduleDeptAutoCloudSave('edit department row');}
+function updateDeptRiskAndRender(i,k,v){if(!guardAdmin())return;deptRiskData[currentDeptArea][i][k]=v;calcDeptRiskRow(deptRiskData[currentDeptArea][i]);renderDeptRisk();scheduleDeptAutoCloudSave('edit department score');}
+function deleteDeptRiskRow(i){if(!guardAdmin())return;if(confirm('Delete this Department Risk Register row?')){deptRiskData[currentDeptArea].splice(i,1);renderDeptRisk();scheduleDeptAutoCloudSave('delete department row');}}
+function clearDeptRiskArea(){if(!guardYear() || !guardAdmin())return;if(confirm('Clear all records in '+currentDeptArea+'?')){deptRiskData[currentDeptArea]=[];renderDeptRisk();scheduleDeptAutoCloudSave('clear department area');}}
+async function saveDeptRiskCloud(){if(!guardYear() || !guardAdmin())return;Object.values(deptRiskData).forEach(arr=>(arr||[]).forEach(calcDeptRiskRow));saveDeptRiskLocal();try{await db.collection(DEPT_FIREBASE_COLLECTION).doc(String(currentYear)).set({year:currentYear,deptRiskData,savedAt:new Date().toISOString(),updatedBy:currentMode},{merge:false});lastDeptCloudSaveHash=deptCloudHash();await queueFullSiteBackup('Manual Department Risk Register save');setSyncStatus('Department saved + backed up','ok');alert('Department Risk Register saved to Firebase for '+currentYear+'. Full-site backup updated.');}catch(err){console.error('Department Firebase save error:',err);alert('Could not save Department Risk Register to Firebase.');}}
+async function loadDeptRiskCloud(silent=false){if(!guardYear())return;setSyncStatus('Department loading...','info');try{const snap=await db.collection(DEPT_FIREBASE_COLLECTION).doc(String(currentYear)).get();if(!snap.exists){deptRiskData=cloneDeptRiskSeedData();ensureDeptRiskSeedIfEmpty();saveDeptRiskLocal();renderDeptRiskTabs();renderDeptRisk();lastDeptCloudSaveHash=deptCloudHash();setSyncStatus('Department starter data loaded','ok');if(!silent)alert('No Department Risk Register Firebase data found for '+currentYear+'. Annex 17 starter risks loaded. Click Save to Firebase to store them.');return;}const data=snap.data()||{};deptRiskData=data.deptRiskData||{};ensureDeptRiskSeedIfEmpty();saveDeptRiskLocal();renderDeptRiskTabs();renderDeptRisk();lastDeptCloudSaveHash=deptCloudHash();setSyncStatus('Department loaded','ok');if(!silent)alert('Department Risk Register loaded from Firebase for '+currentYear+'.');}catch(err){console.error('Department Firebase load error:',err);setSyncStatus('Department load failed','error');if(!silent)alert('Could not load Department Risk Register from Firebase.');}}
+function exportDeptRiskExcel(){if(!guardYear())return;const rows=(deptRiskData[currentDeptArea]||[]).map(r=>{calcDeptRiskRow(r);let o={Area:currentDeptArea};deptRiskCols.filter(c=>c[0]!=='actions').forEach(c=>o[c[1]]=r[c[0]]||'');return o;});let ws=XLSX.utils.json_to_sheet(rows);let wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,currentDeptArea.slice(0,31));XLSX.writeFile(wb,'Department_Risk_Register_'+currentDeptArea.replace(/[^A-Za-z0-9]+/g,'_')+'_'+(currentYear||'')+'.xlsx');}
+function deptRiskFileSafeName(prefix,ext){return prefix+'_'+currentDeptArea.replace(/[^A-Za-z0-9]+/g,'_')+'_'+(currentYear||'')+'.'+ext;}
+function getDeptRiskExportRows(){return (deptRiskData[currentDeptArea]||[]).map(r=>{calcDeptRiskRow(r);return r;});}
+function downloadDeptRiskTemplate(){
+  if(!guardYear())return;
+  const obj={Area:currentDeptArea};
+  deptRiskCols.filter(c=>c[0]!=='actions').forEach(c=>obj[c[1]]='');
+  const ws=XLSX.utils.json_to_sheet([obj]);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Import Template');
+  XLSX.writeFile(wb,deptRiskFileSafeName('Department_Risk_Register_Import_Template','xlsx'));
+}
+function downloadDeptRiskPDF(){
+  if(!guardYear())return;
+  const jsPDFObj=window.jspdf && window.jspdf.jsPDF;
+  if(!jsPDFObj || !window.jspdf || !jsPDFObj.API || !jsPDFObj.API.autoTable){
+    alert('PDF library still loading or blocked. Print Preview will open now. Please try Save PDF again after a few seconds.');
+    printDeptRiskPDF();
+    return;
+  }
+  const rows=getDeptRiskExportRows();
+  const cols=deptRiskCols.filter(c=>c[0]!=='actions');
+  const doc=new jsPDFObj({orientation:'landscape',unit:'mm',format:'a3'});
+  const title='Department Risk Register - '+currentDeptArea+' - '+(currentYear||'');
+  doc.setFontSize(14);
+  doc.text('Department Risk Register',14,12);
+  doc.setFontSize(10);
+  doc.text(String(currentDeptArea)+' - '+String(currentYear||''),14,18);
+  doc.text('Generated: '+new Date().toLocaleString(),330,12,{align:'right'});
+  doc.text('Record(s): '+rows.length,330,18,{align:'right'});
+  const head=[['No.',...cols.map(c=>c[1])]];
+  const body=rows.length?rows.map((r,i)=>[String(i+1),...cols.map(c=>String(r[c[0]]??''))]):[[ '','No records available for this area.' ]];
+  doc.autoTable({
+    head,body,startY:24,
+    theme:'grid',
+    styles:{fontSize:5,cellPadding:1,overflow:'linebreak',valign:'top'},
+    headStyles:{fillColor:[8,35,63],textColor:[255,255,255],fontStyle:'bold'},
+    margin:{left:5,right:5,top:8,bottom:10},
+    pageBreak:'auto',
+    rowPageBreak:'auto',
+    tableWidth:'auto',
+    columnStyles:{0:{cellWidth:8}},
+    didParseCell:function(data){
+      if(data.section==='body'){
+        const header=head[0][data.column.index]||'';
+        const val=String(data.cell.raw||'').toLowerCase();
+        if(header==='Risk' && val==='high'){data.cell.styles.fillColor=[229,57,53];data.cell.styles.textColor=[255,255,255];}
+        if(header==='Risk' && val==='medium high')data.cell.styles.fillColor=[196,122,56];
+        if(header==='Risk' && val==='medium')data.cell.styles.fillColor=[255,215,0];
+        if(header==='Risk' && val==='medium low')data.cell.styles.fillColor=[122,193,67];
+        if(header==='Risk' && val==='low'){data.cell.styles.fillColor=[55,166,90];data.cell.styles.textColor=[255,255,255];}
+      }
+    },
+    didDrawPage:function(){
+      const page=doc.internal.getNumberOfPages();
+      doc.setFontSize(7);
+      doc.text('Developed By Aviation Security Quality Assurance Unit',210,292,{align:'center'});
+      doc.text('Page '+page,405,292,{align:'right'});
+    }
+  });
+  doc.save(deptRiskFileSafeName('Department_Risk_Register','pdf'));
+}
+function importDeptRiskExcel(e){if(!guardYear() || !guardAdmin())return;let f=e.target.files[0];if(!f)return;let reader=new FileReader();reader.onload=ev=>{let wb=XLSX.read(ev.target.result,{type:'binary'});let ws=wb.Sheets[wb.SheetNames[0]];let rows=XLSX.utils.sheet_to_json(ws);rows.forEach(row=>{let o={};deptRiskCols.filter(c=>c[0]!=='actions').forEach(c=>{o[c[0]]=row[c[1]]||row[c[0]]||''});if(!o.riskId)o.riskId='DR-'+safeId(currentDeptArea).slice(0,3).toUpperCase()+'-'+String(Date.now()).slice(-6);calcDeptRiskRow(o);deptRiskData[currentDeptArea].push(o);});renderDeptRisk();scheduleDeptAutoCloudSave('import department Excel');e.target.value='';alert('Imported to '+currentDeptArea+' successfully.');};reader.readAsBinaryString(f);}
+function printDeptRiskPDF(){
+  if(!guardYear())return;
+  const rows=(deptRiskData[currentDeptArea]||[]);
+  rows.forEach(calcDeptRiskRow);
+  const cols=deptRiskCols.filter(c=>c[0]!=='actions');
+  const escPrint=v=>String(v??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+  const riskBg=v=>{
+    const x=String(v||'').toLowerCase();
+    if(x==='high')return '#e53935';
+    if(x==='medium high')return '#c47a38';
+    if(x==='medium')return '#ffd700';
+    if(x==='medium low')return '#7ac143';
+    if(x==='low')return '#37a65a';
+    return 'transparent';
+  };
+  const bodyRows=rows.length?rows.map((r,idx)=>`<tr><td class="rowno">${idx+1}</td>${cols.map(c=>{
+    let bg='';
+    if(['risk','riskAfter'].includes(c[0])){const rv=String(r[c[0]]||'').toLowerCase();bg=` style="background:${riskBg(r[c[0]])};color:${['high','low'].includes(rv)?'white':'#111'}"`; }
+    return `<td${bg}>${escPrint(r[c[0]]||'')}</td>`;
+  }).join('')}</tr>`).join(''):`<tr><td colspan="${cols.length+1}" style="text-align:center;padding:18px">No records available for this area.</td></tr>`;
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Department Risk Register - ${escPrint(currentDeptArea)} - ${escPrint(currentYear)}</title>
+  <style>
+    @page{size:A3 landscape;margin:8mm;}
+    *{box-sizing:border-box}
+    body{font-family:Arial,Helvetica,sans-serif;margin:0;color:#111;background:white;font-size:9px;}
+    .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #0b3d91;padding-bottom:6px;margin-bottom:8px;gap:10px;}
+    h1{font-size:17px;margin:0;color:#0b3d91;}
+    h2{font-size:13px;margin:4px 0 0;color:#111;}
+    .meta{text-align:right;font-size:9px;line-height:1.45;white-space:nowrap;}
+    table{width:100%;border-collapse:collapse;table-layout:fixed;page-break-inside:auto;}
+    thead{display:table-header-group;}
+    tfoot{display:table-footer-group;}
+    tr{page-break-inside:avoid;page-break-after:auto;}
+    th,td{border:1px solid #333;padding:3px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere;white-space:pre-wrap;line-height:1.25;}
+    th{background:#08233f!important;color:white!important;text-align:center;font-weight:bold;font-size:7px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    td{font-size:7px;}
+    .rowno{width:18px;text-align:center;font-weight:bold;background:#eef6ff;}
+    .riskcol{width:9%;}.controlcol{width:9%;}.scorecol{width:4%;}.ratingcol{width:6%;}
+    .footer{margin-top:8px;text-align:center;font-size:8px;color:#555;}
+    @media print{button{display:none!important} body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+  </style></head><body>
+    <div class="top"><div><h1>Department Risk Register</h1><h2>${escPrint(currentDeptArea)} - ${escPrint(currentYear)}</h2></div><div class="meta">Generated: ${new Date().toLocaleString()}<br>Record(s): ${rows.length}</div></div>
+    <table><thead><tr><th class="rowno">No.</th>${cols.map(c=>{
+      let cls=['riskText'].includes(c[0])?'riskcol':(['currentControls'].includes(c[0])?'controlcol':(['probScore','sevScore','vulScore','riskScore','probScoreAfter','sevScoreAfter','vulScoreAfter','riskScoreAfter'].includes(c[0])?'scorecol':'ratingcol'));
+      return `<th class="${cls}">${escPrint(c[1])}</th>`;
+    }).join('')}</tr></thead><tbody>${bodyRows}</tbody></table>
+    <div class="footer">Developed By Aviation Security Quality Assurance Unit</div>
+    <script>window.onload=function(){setTimeout(function(){window.print();},250);};<\/script>
+  </body></html>`;
+  const w=window.open('','_blank');
+  if(!w){alert('Popup blocked. Please allow popups for this file and try again.');return;}
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+
+
+init();
+</script>
+</body>
+</html>
